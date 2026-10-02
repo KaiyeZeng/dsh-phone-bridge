@@ -97,11 +97,16 @@ has to be edited by hand.**
 **OpenClaw side:**
 
 ```
-openclaw plugins install openclaw-dsh-bridge
+openclaw plugins install openclaw-dsh-bridge --force --accept-capabilities
 ```
 
-Then allow and configure it in `openclaw.json` (see below). Full steps in
+Both flags are required; without either one the install fails. Then allow and
+configure it in `openclaw.json` (see below). Full steps in
 [docs/installation.md](docs/installation.md).
+
+Before installing, check that `~/.openclaw/extensions/` holds no second copy of
+this plugin. An old backup directory is loaded as a plugin too, and two copies
+sharing one id will forward every message twice.
 
 **For local development** you can skip npm on both sides: mount `dsh-plugin/`
 with a `file://` URL, and copy `openclaw-plugin/` into the extension directory.

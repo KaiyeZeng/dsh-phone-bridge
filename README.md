@@ -81,10 +81,12 @@ dsh plugin --profile <你的 profile> add dsh-phone-bridge
 **OpenClaw 侧：**
 
 ```
-openclaw plugins install openclaw-dsh-bridge
+openclaw plugins install openclaw-dsh-bridge --force --accept-capabilities
 ```
 
-装完在 `openclaw.json` 里放行并配置（见下一节）。完整步骤见 [docs/installation.md](docs/installation.md)。
+两个参数都得带，缺一个装不上。装完在 `openclaw.json` 里放行并配置（见下一节）。完整步骤见 [docs/installation.md](docs/installation.md)。
+
+装之前确认 `~/.openclaw/extensions/` 里没有这个插件的第二份副本——旧备份目录也会被当成插件加载，两份同时跑会把同一条消息转发两次。
 
 **本地开发时**也可以不走 npm：DSH 侧用 `file://` 把 `dsh-plugin/` 挂进 profile，OpenClaw 侧把 `openclaw-plugin/` 复制进扩展目录，改完代码不用重装。两边都别同时用安装版和本地版。
 

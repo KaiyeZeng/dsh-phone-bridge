@@ -1,0 +1,39 @@
+name: publish to npm
+
+# Publishing is driven by the version field, not by the push itself: each package
+# is published only when its own package.json version is not on npm yet. So an
+# ordinary commit to main publishes nothing, and a release is just "bump the
+# version, commit, push".
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      - name: Publish every package whose version is new
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -euo pipefail
+          for dir in dsh-plugin openclaw-plugin; do
+            name=$(node -p "require('./$dir/package.json').name")
+            version=$(node -p "require('./$dir/package.json').version")
+            if npm view "$name@$version" version >/dev/null 2>&1; then
+              echo "::notice::$name@$version is already on npm, skipping"
+              continue
+            fi
+            echo "::notice::publishing $name@$version"
+            (cd "$dir" && npm publish)
+          done

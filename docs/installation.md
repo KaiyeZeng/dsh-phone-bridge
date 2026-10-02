@@ -73,14 +73,31 @@ dsh plugin --profile desktop list
 ### 1. 一行命令装
 
 ```powershell
-openclaw plugins install openclaw-dsh-bridge
+openclaw plugins install openclaw-dsh-bridge --force --accept-capabilities
 ```
 
-装完它会以 `dsh-bridge` 这个 id 出现。然后再做下面的放行和配置。
+**两个参数都是必须的，缺一个就装不上**，而且报错不会明说少了哪个：
+
+- `--force` —— 这个包在 npm 上，不属于 OpenClaw 自家的 ClawHub，会被当成「未审核来源」拦下。
+- `--accept-capabilities` —— 插件声明了能力，要显式同意。少了它，命令会以 `Plugin "dsh-bridge" requires capability consent. The plugin was not installed.` 结束，退出码 1。
+
+装完它会以 `dsh-bridge` 这个 id 出现。
+
+### 先确认没有第二份副本
+
+OpenClaw 会把 `~/.openclaw/extensions/` 下的**每个**含 `openclaw.plugin.json` 的子目录都当成插件加载。如果你的扩展目录里还留着这个插件的旧副本或备份目录，**两份会同时跑，同一条消息被转发两次**。
+
+装之前先看一眼：
+
+```powershell
+Get-ChildItem ~\.openclaw\extensions -Directory | Select-Object -ExpandProperty Name
+```
+
+有别的 `dsh-bridge*` 目录就把它移出 `extensions/`（移动，不是删除，随时能移回来）。
 
 ### 备选：本地开发用复制
 
-也可以把 `openclaw-plugin/` 直接复制到 `~/.openclaw/extensions/dsh-bridge/`。目录名不一定要叫 `dsh-bridge`，但配置里的名字要和它一致。
+也可以把 `openclaw-plugin/` 直接复制到 `~/.openclaw/extensions/dsh-bridge/`。目录名不一定要叫 `dsh-bridge`，但配置里的名字要和它一致。走这条路就别再用 npm 装，两边选一边。
 
 ### 2. 放行插件
 
