@@ -56,6 +56,18 @@ for (const cmd of dispatchable) {
   fail("openclaw-plugin/index.js", `dispatcher handles /${cmd} but help never mentions it`);
 }
 
+// The typo suggester keeps its own list of command names. A command missing from
+// it does not break anything, it just silently stops suggesting that typo, which
+// is exactly the kind of drift nobody notices.
+const knownBlock = ocSrc.slice(ocSrc.indexOf("const KNOWN_COMMANDS"));
+const knownList = knownBlock.slice(0, knownBlock.indexOf("]"));
+const knownCommands = new Set([...knownList.matchAll(/"([a-z-]+)"/g)].map((m) => m[1]));
+for (const cmd of advertised) {
+  if (!knownCommands.has(cmd)) {
+    fail("openclaw-plugin/index.js", `/${cmd} is a real command but KNOWN_COMMANDS omits it, so a typo of it gets no suggestion`);
+  }
+}
+
 // Commands advertised in help must also appear in both readmes.
 for (const file of ["README.md", "README.en.md"]) {
   const text = read(file);

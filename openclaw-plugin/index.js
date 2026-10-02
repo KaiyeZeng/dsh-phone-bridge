@@ -682,6 +682,50 @@ async function askSession(sessionId, text) {
   return `DSH 调用失败：${result.error ?? "未知错误"}`;
 }
 
+// Everything the dispatcher below actually handles. Used only to suggest the
+// likely intent when someone mistypes one.
+const KNOWN_COMMANDS = [
+  "list", "use", "where", "find", "find-any", "new", "name", "status",
+  "kill", "model", "del", "trash", "restore", "purge", "pending", "help",
+];
+
+function editDistance(a, b) {
+  let previous = Array.from({ length: b.length + 1 }, (_, index) => index);
+  for (let i = 1; i <= a.length; i += 1) {
+    const current = [i];
+    for (let j = 1; j <= b.length; j += 1) {
+      current[j] = Math.min(
+        previous[j] + 1,
+        current[j - 1] + 1,
+        previous[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1),
+      );
+    }
+    previous = current;
+  }
+  return previous[b.length];
+}
+
+// The likely intended command, or null when the text does not look like a
+// mistyped one. The threshold is deliberately tight: people do paste things like
+// /home/you/notes.md as chat, and those must keep going through untouched.
+function closestCommand(word) {
+  if (word.length < 3) return null;
+  let best = null;
+  let bestScore = Infinity;
+  for (const command of KNOWN_COMMANDS) {
+    const score = editDistance(word, command);
+    if (score < bestScore) {
+      bestScore = score;
+      best = command;
+    }
+  }
+  // Two edits for words of five letters and up, one below that. A transposition
+  // costs two in Levenshtein, so the tighter bound would miss the commonest typo
+  // of all (/modle). Loosening it is safe because this only ever runs on input
+  // that already starts with a slash.
+  return bestScore <= (word.length <= 4 ? 1 : 2) ? best : null;
+}
+
 // Collect every identity-ish field the two hook objects expose. Real channels
 // fill different ones.
 function identityCandidates(event, ctx) {
@@ -778,7 +822,24 @@ const plugin = {
         const matched = candidates.some((value) => allowedSenders.includes(value));
         if (!matched) {
           note(`blocked ids=${candidates.join("|") || "(none)"}`);
-          return { handled: true };
+          // Answer with the identifiers we saw rather than staying silent. That
+          // is how a new user gets themselves onto the allowlist without reading
+          // hook.log on the machine, and it gives away nothing: these are the
+          // sender's own ids, and knowing them does not grant access.
+          const shown = candidates.length > 0
+            ? candidates.map((value) => `  ${value}`).join("\n")
+            : "  （这个渠道的消息里没有任何身份字段）";
+          return {
+            handled: true,
+            text: [
+              "这条通道只对白名单里的账号开放，你不在名单里。",
+              "",
+              "我看到的身份是：",
+              shown,
+              "",
+              "要放行，把上面任意一行加进 openclaw.json 里这个插件的 allowedSenders，然后重启 Gateway。",
+            ].join("\n"),
+          };
         }
       }
 
@@ -961,6 +1022,21 @@ const plugin = {
               note(`answer rejected: ${answered.error}`);
               return { handled: true, text: `${answered.error}\n发 /pending 可以看还有哪些没处理。` };
             }
+          }
+        }
+
+        // A near-miss command is answered with a suggestion rather than being
+        // forwarded to the session. Typing /lst and watching it arrive at the
+        // agent as prose is confusing, and this channel runs DSH with approvals
+        // off, so stray text is also a stray instruction.
+        if (!body.startsWith("//") && body.startsWith("/")) {
+          const word = (body.slice(1).split(/\s+/)[0] ?? "").toLowerCase();
+          const guess = closestCommand(word);
+          if (guess) {
+            return {
+              handled: true,
+              text: `没有 /${word} 这个指令。\n是想用 /${guess} 吗？\n全部指令发 /help。`,
+            };
           }
         }
 

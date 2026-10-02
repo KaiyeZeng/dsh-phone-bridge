@@ -24,6 +24,16 @@
 | 会话管理 | 只有「新会话」 | 列表 / 切换 / 搜索 / 重命名 / 删除 / 回收站 |
 | 权限门 | 各自实现 | **白名单**（只允许指定的聊天账号） |
 
+## 为什么要多装一层 OpenClaw
+
+这是本项目最大的使用门槛，值得说清楚它为什么绕不开。
+
+**DSH 的 HTTP 端口只监听 `127.0.0.1`**，手机即使连在同一个 WiFi 下也够不到它（实测本机局域网地址是 `172.21.61.86`，而端口只绑回环）。任何「用手机操作电脑上本机服务」的方案，都必须在电脑上跑一个**本机够得到、手机也够得到**的中转。OpenClaw 就是在做这件事，顺带把微信、元宝这些渠道接好。
+
+所以去掉这一层的代价是明确的两选一：要么把 DSH 的端口暴露到局域网，攻击面直接变大（而「所有路由只绑回环」正是这个方案的安全优点之一）；要么自己再写一个中转加一个手机端。本项目选择复用 OpenClaw，而不是自己造。
+
+换句话说，这一层不是多余的包装，**它就是手机能到达电脑的那条路**。
+
 ## 组成
 
 两个插件，一个仓库，**都要装**：
@@ -66,6 +76,8 @@
 - 直接发消息 = 发给当前会话
 - 有挂起的提问或审批时，普通消息当作答复
 - 想强行当聊天发，用 `//` 开头
+- 指令打错时会给建议（`/lst` → 「是想用 /list 吗」），而不是把这条错指令原样丢给 DSH
+- 被白名单拦下时，会**把你的身份 ID 回给你**，你直接复制进 `allowedSenders` 就行，不用去翻电脑上的日志
 
 ## 安装
 
@@ -140,10 +152,26 @@ openclaw plugins install openclaw-dsh-bridge --force --accept-capabilities
 
 ## 兼容性
 
-两个半边都依赖 DSH 与 OpenClaw 的内部实现，版本升级可能失灵。失效时按这个顺序查：
+### 实测环境
+
+下面这些是**实际跑通的组合，不是「理论上支持」**：
+
+| | 版本 |
+|---|---|
+| DSH 桌面版 | `0.2.0-rc.2`（profile `desktop`） |
+| OpenClaw | `2026.9.5` (ec9c1a1) |
+| 操作系统 | Windows 11 家庭版（中文） |
+| 已验证渠道 | 微信（`@tencent-weixin/openclaw-weixin` 2.4.8）、元宝（2.18.3） |
+| 已验证 Node | 24.x |
+
+**升级 DSH 之后第一件事**：跑 `verify.ps1`，或者直接看 `GET /phone-bridge/health`。它会列出插件用到的 10 个 `sessionController` 方法里有没有缺失的。缺了就是 DSH 改了内部接口，那时的报错会直接点名是哪个方法，不用逐个路由试。
+
+### 失效时的排查顺序
+
+两个半边都依赖 DSH 与 OpenClaw 的内部实现，版本升级可能失灵。按这个顺序查：
 
 1. **DSH 侧路由没挂上** → 看 DSH 启动日志里有没有 `phone-bridge listening on /phone-bridge`
-2. **`sessionController` 变了** → 用到的方法只有 `cancel`、`create`、`follow`、`inspect`、`list`、`modelCatalog`、`prompt`、`rename`、`search`、`selectModel` 这几个，调用全在 `dsh-plugin/index.js` 里
+2. **`sessionController` 变了** → 先看 `/phone-bridge/health` 报缺哪个；用到的方法只有 `cancel`、`create`、`follow`、`inspect`、`list`、`modelCatalog`、`prompt`、`rename`、`search`、`selectModel` 这几个，调用全在 `dsh-plugin/index.js` 里
 3. **`~/.dsh` 下的目录布局变了** → 会话在 `sessions/<cwd 编码>/<sessionId>/`，投影缓存在 `storages/session_projcache/sessions/`
 4. **OpenClaw 的钩子变了** → 用 `api.on("before_dispatch", ...)`，不是 `api.registerHook`（后者对这个事件不生效）
 

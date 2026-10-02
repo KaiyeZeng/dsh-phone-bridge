@@ -35,6 +35,26 @@ English | [中文](README.md)
 | Session management | only "new session" | list / switch / search / rename / delete / trash |
 | Access control | varies | **allowlist** of chat account ids |
 
+## Why the OpenClaw layer is not optional
+
+This is the project's biggest barrier to entry, and it is worth saying exactly why
+it cannot simply be removed.
+
+**DSH's HTTP port listens on `127.0.0.1` only**, so a phone cannot reach it even on
+the same WiFi (measured: this machine's LAN address is `172.21.61.86`, while the
+port is bound to loopback). Any scheme for driving a local service from a phone
+needs a relay on the computer that both the computer and the phone can reach. That
+is what OpenClaw is doing here, and it brings the WeChat, Telegram and Yuanbao
+channel plumbing along with it.
+
+Dropping it therefore means one of two things: expose DSH's port to the LAN, which
+widens the attack surface considerably (loopback-only routes are one of this
+project's stated security properties), or write another relay plus a phone client.
+This project reuses OpenClaw rather than building its own.
+
+In other words the layer is not packaging. **It is the path the phone takes to
+reach your computer.**
+
 ## Layout
 
 Two plugins, one repository, **both required**:
@@ -82,6 +102,10 @@ the desktop process puts the real `sessionController` within reach.
 - A plain message goes to the current session
 - While a question or approval is pending, a plain message answers it
 - Prefix with `//` to force a plain chat message
+- A mistyped command gets a suggestion (`/lst` answers "did you mean /list?") instead
+  of being forwarded to DSH as prose
+- When the allowlist turns you away it **replies with your own identity ids**, so you
+  can paste one into `allowedSenders` without going to read the log on the computer
 
 ## Install
 
@@ -180,11 +204,30 @@ Please:
 
 ## Compatibility
 
+### What this has actually been run against
+
+These are combinations that were verified by hand, not "theoretically supported":
+
+| | Version |
+|---|---|
+| DSH desktop | `0.2.0-rc.2` (profile `desktop`) |
+| OpenClaw | `2026.9.5` (ec9c1a1) |
+| OS | Windows 11 Home (Chinese) |
+| Channels verified | WeChat (`@tencent-weixin/openclaw-weixin` 2.4.8), Yuanbao (2.18.3) |
+| Node | 24.x |
+
+**First thing to do after a DSH upgrade** is run `verify.ps1`, or read
+`GET /phone-bridge/health`. It lists which of the ten `sessionController` methods
+the plugin calls are missing. When one is, the error names it instead of leaving you
+to try routes until something 500s.
+
+### When it stops working
+
 Both halves depend on DSH and OpenClaw internals, which can change between
-releases. When it stops working, check in this order:
+releases. Check in this order:
 
 1. **DSH side route not mounted** — look for `phone-bridge listening on /phone-bridge` in the DSH startup log
-2. **`sessionController` changed** — only `cancel`, `create`, `follow`, `inspect`, `list`, `modelCatalog`, `prompt`, `rename`, `search` and `selectModel` are used, all called from `dsh-plugin/index.js`
+2. **`sessionController` changed** — check `/phone-bridge/health` first; only `cancel`, `create`, `follow`, `inspect`, `list`, `modelCatalog`, `prompt`, `rename`, `search` and `selectModel` are used, all called from `dsh-plugin/index.js`
 3. **Directory layout under `~/.dsh` changed** — sessions live in `sessions/<encoded cwd>/<sessionId>/`, projection caches in `storages/session_projcache/sessions/`
 4. **OpenClaw hook changed** — it uses `api.on("before_dispatch", ...)`, not `api.registerHook` (the latter never fires for this event)
 
