@@ -168,14 +168,30 @@ openclaw plugins install openclaw-dsh-bridge --force --accept-capabilities
 | 已验证渠道 | 微信（`@tencent-weixin/openclaw-weixin` 2.4.8）、元宝（2.18.3） |
 | 已验证 Node | 24.x |
 
-**升级 DSH 之后第一件事**：跑 `verify.ps1`，或者直接看 `GET /phone-bridge/health`。它会列出插件用到的 10 个 `sessionController` 方法里有没有缺失的。缺了就是 DSH 改了内部接口，那时的报错会直接点名是哪个方法，不用逐个路由试。
+**升级 DSH 之后第一件事**：跑 `verify.ps1`，或者直接看 `GET /phone-bridge/health`。它会列出插件用到的 11 个 `sessionController` 方法里有没有缺失的，并对比 DSH 版本和这个插件实测过的版本。缺了就是 DSH 改了内部接口，报错会直接点名是哪个方法，不用逐个路由试。
+
+### DSH 升级之后怎么办
+
+**这个插件不会随 DSH 版本自动适应**，DSH 改了内部接口就得改代码。这是有意的选择：做「猜候选方法名」的自适应性，猜错时会静默绑到名字相近但语义不同的方法上，那比一个红灯危险得多。
+
+所以维护方式是「**自动发现 + 手动修**」，其中发现那一环是自动的。
+
+**使用者升级 DSH 之后：**
+
+1. 电脑上跑 `verify.ps1`，或者手机上发 `/health`
+2. 两者都会直接告诉你是接口变了，还是别处的问题；`/health` 还会说 DSH 版本和实测版本是否一致
+3. 如果报「缺某个方法」，那就是 DSH 改了内部接口，去看仓库有没有新版本，有就按安装文档更新
+
+**仓库这边是自动的：** 每天定时跑一次 DSH 接口契约检查，对象是 npm 上 `@deepseek-ai/dsh-api-session-controller` 的 `next` 标签（它和桌面版是同一条线，实测 `next` = `0.2.0-rc.2`，与桌面版完全一致）。DSH 一旦改名或删掉插件用到的方法，CI 就红——在任何一个使用者升级之前。
+
+**还有一种它检测不了的失效**：方法名没变、参数没变，但**语义变了**（比如 `cancel` 从「中断当前轮次」变成「清空队列」）。这种谁都检测不出来，只能靠升级后留意行为变化。这也是 `/health` 显示版本对比的全部意义。
 
 ### 失效时的排查顺序
 
 两个半边都依赖 DSH 与 OpenClaw 的内部实现，版本升级可能失灵。按这个顺序查：
 
 1. **DSH 侧路由没挂上** → 看 DSH 启动日志里有没有 `phone-bridge listening on /phone-bridge`
-2. **`sessionController` 变了** → 先看 `/phone-bridge/health` 报缺哪个；用到的方法只有 `cancel`、`create`、`follow`、`inspect`、`list`、`modelCatalog`、`prompt`、`rename`、`search`、`selectModel` 这几个，调用全在 `dsh-plugin/index.js` 里
+2. **`sessionController` 变了** → 先看 `/phone-bridge/health` 报缺哪个；用到的方法只有 `cancel`、`create`、`follow`、`inspect`、`list`、`modelCatalog`、`page`、`prompt`、`rename`、`search`、`selectModel` 这几个，调用全在 `dsh-plugin/index.js` 里
 3. **`~/.dsh` 下的目录布局变了** → 会话在 `sessions/<cwd 编码>/<sessionId>/`，投影缓存在 `storages/session_projcache/sessions/`
 4. **OpenClaw 的钩子变了** → 用 `api.on("before_dispatch", ...)`，不是 `api.registerHook`（后者对这个事件不生效）
 

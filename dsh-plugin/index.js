@@ -244,6 +244,32 @@ const REQUIRED_CONTROLLER_METHODS = [
   "selectModel",
 ];
 
+// The DSH version this build was last exercised against. Bumped by hand when the
+// plugin is re-tested on a newer DSH. It is not a compatibility claim, only the
+// value /health compares the running version to, so that a mismatch shows up as a
+// sentence rather than as a mystery.
+const TESTED_WITH_DSH = "0.2.0-rc.2";
+
+// Best effort. The plugin runs inside the DSH process, and Electron patches fs so
+// an app.asar reads like a directory, which is what makes this possible at all.
+// Returns null when it cannot be read; /health says so rather than guessing.
+function readDshVersion() {
+  const candidates = [];
+  if (process.resourcesPath) {
+    candidates.push(join(process.resourcesPath, "app.asar", "package.json"));
+    candidates.push(join(process.resourcesPath, "app", "package.json"));
+  }
+  for (const candidate of candidates) {
+    try {
+      const parsed = JSON.parse(readFileSync(candidate, "utf8"));
+      if (parsed?.version) return { name: parsed.name ?? null, version: parsed.version };
+    } catch {
+      // try the next candidate
+    }
+  }
+  return null;
+}
+
 // A session lives at sessions/<slug-of-cwd>/<sessionId>/, where the slug is a
 // lossy encoding of the working directory. Locate it by scanning instead of
 // trying to re-derive that encoding.
@@ -1058,11 +1084,18 @@ export function apply(ctx, config = {}) {
         const missing = sessionController
           ? REQUIRED_CONTROLLER_METHODS.filter((name) => typeof sessionController[name] !== "function")
           : REQUIRED_CONTROLLER_METHODS.slice();
+        const dsh = readDshVersion();
         sendJson(res, 200, {
           ok: missing.length === 0,
           controllerAvailable: Boolean(sessionController),
           required: REQUIRED_CONTROLLER_METHODS,
           missing,
+          // The method list above is the real compatibility signal. The version is
+          // context: a newer DSH can keep every method and still change what one of
+          // them means, and that is the one failure nothing here can detect.
+          testedWith: TESTED_WITH_DSH,
+          dshVersion: dsh?.version ?? null,
+          versionMatchesTested: dsh?.version ? dsh.version === TESTED_WITH_DSH : null,
         });
       } catch (error) {
         sendJson(res, 500, { ok: false, error: String(error?.message ?? error) });

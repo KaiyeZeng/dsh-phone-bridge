@@ -10,6 +10,12 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+  # The maintenance model is "fix it by hand when DSH changes", so the whole thing
+  # rests on finding out early. This is what finds out: every morning it re-checks
+  # the DSH interface against npm, and a rename or a removal there turns the build
+  # red before any user has upgraded.
+  schedule:
+    - cron: "17 1 * * *"
 
 jobs:
   check:
@@ -29,6 +35,13 @@ jobs:
       # readme claiming there was no install script two releases after there was.
       - name: Docs and code agree
         run: node scripts/check-docs.mjs
+
+      # Fails when DSH renames or drops something the plugin calls. The plugin does
+      # not adapt on the fly - a guessed alias binding to the wrong method would be
+      # worse than a red build - so this early warning is what makes manual
+      # maintenance workable.
+      - name: The DSH interface still has what we call
+        run: node scripts/check-dsh-contract.mjs
 
   publish:
     needs: check

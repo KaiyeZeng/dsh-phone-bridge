@@ -529,6 +529,17 @@ async function showHealth() {
     lines.push(`DSH 侧插件：不通 —— ${health.error}`);
   }
 
+  // Version context. The method list above is the real signal; this only covers the
+  // one failure nothing can detect, which is a method that kept its name and
+  // changed what it means.
+  if (health.dshVersion) {
+    lines.push(health.versionMatchesTested
+      ? `DSH 版本：${health.dshVersion}，和这个插件实测过的一致`
+      : `DSH 版本：${health.dshVersion}，而这个插件只在 ${health.testedWith} 上实测过——升级之后留意行为变化，必要时更新插件`);
+  } else {
+    lines.push(`DSH 版本：读不到（这个插件在 ${health.testedWith ?? "某个版本"} 上实测过）`);
+  }
+
   const status = await httpJson("GET", `${BRIDGE_URL}/status`, undefined, 5000);
   if (status.ok) {
     lines.push(`DSH 会话：读得到，${status.runningCount ?? 0} 个正在跑任务`);

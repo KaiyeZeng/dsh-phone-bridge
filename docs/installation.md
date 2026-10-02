@@ -290,3 +290,42 @@ Get-ScheduledTask -TaskName "*OpenClaw*" | Select-Object TaskName, State
 **OpenClaw 侧**：从 `plugins.allow` 里去掉名字，删掉扩展目录，重启 Gateway。
 
 **回收站里的东西**：在 `<DSH 配置根>/deleted-sessions/` 下，删之前先确认里面没有你还想要的会话。
+
+---
+
+## 六、上架 ClawHub（维护者看）
+
+现在 `openclaw plugins install` 要带 `--force`，因为 npm 上的包被 ClawHub 当作**未审核来源**。发到 ClawHub 之后：
+
+- 安装不再需要 `--force`
+- 别人 `openclaw plugins search` 能搜到
+
+### 我们还差什么（2026-10-02 核对）
+
+| 要求 | 状态 |
+|---|---|
+| `openclaw.plugin.json` | ✅ 有 |
+| `package.json` 里的 `openclaw.compat.pluginApi` | ✅ `>=2026.9.5` |
+| `package.json` 里的 `openclaw.build.openclawVersion` | ✅ `2026.9.5` |
+| 源码仓库与确切 commit | ✅ 仓库在 GitHub，且从该 checkout 发布即可被识别 |
+| `assets/icon.png` | ❌ 没有。可选，缺了就用分类图标 |
+| 清单里的 `categories` | ⚠️ 现在是 `["other"]`，这是**显式声明**，会压过 ClawHub 的自动分类。想让它自己分类就删掉这个字段；想指定就填一个有效的插件分类 slug（官方举例：`context`、`memory`、`developer-tools`、`agent-runtimes`） |
+
+### 步骤
+
+```powershell
+npm i -g clawhub
+clawhub login
+cd C:\Users\曾楷烨\Documents\deepseek-harness\default-workspace\dsh-phone-bridge
+clawhub package validate ./openclaw-plugin
+clawhub package publish ./openclaw-plugin --dry-run
+clawhub package publish ./openclaw-plugin
+```
+
+### 几个要留意的
+
+- **包名与 owner 的 scope 必须匹配**。我们的包名是无 scope 的 `openclaw-dsh-bridge`，按你的账号发布即可；如果哪天改成 `@someone/xxx`，那 scope 必须等于发布 owner。
+- **插件 id 在同一发布者下要唯一**。我们的是 `dsh-bridge`。
+- **新版本先进安全检查**，检查通过前不会出现在公开安装入口。
+- 之后可以配 **OIDC 免密钥发布**（`clawhub package trusted-publisher set`）：先手工发一次建立包记录，然后把仓库和 workflow 文件名登记进去，CI 就能不发 token 直接发版。
+- 同一安装里，**一个 runtime id 只能有一个插件生效**。

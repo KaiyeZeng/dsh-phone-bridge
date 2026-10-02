@@ -226,9 +226,39 @@ These are combinations that were verified by hand, not "theoretically supported"
 | Node | 24.x |
 
 **First thing to do after a DSH upgrade** is run `verify.ps1`, or read
-`GET /phone-bridge/health`. It lists which of the ten `sessionController` methods
-the plugin calls are missing. When one is, the error names it instead of leaving you
-to try routes until something 500s.
+`GET /phone-bridge/health`. It lists which of the eleven `sessionController`
+methods the plugin calls are missing, and compares the running DSH version with
+the one this plugin was last tested on. When a method is gone, the error names it
+instead of leaving you to try routes until something 500s.
+
+### After a DSH upgrade
+
+**This plugin does not adapt itself to DSH versions.** When DSH changes an internal
+interface, the plugin is fixed by hand. That is deliberate: an adapter that guesses
+among candidate method names will one day bind silently to a similarly named method
+with different behaviour, and that is worse than a red build.
+
+So the model is **detect automatically, fix by hand**, and the detecting half is
+automated.
+
+**If you upgraded DSH:**
+
+1. Run `verify.ps1` on the computer, or send `/health` from the phone
+2. Both tell you whether an interface moved or the problem is elsewhere; `/health`
+   also says whether the DSH version matches the one this plugin was tested on
+3. If it reports a missing method, DSH changed its internals - check the repository
+   for a newer release and update
+
+**The repository side is automatic.** A scheduled run once a day checks the DSH
+interface contract against npm's `@deepseek-ai/dsh-api-session-controller` at the
+`next` dist-tag, which tracks the same line the desktop app uses (`next` resolved
+to `0.2.0-rc.2`, exactly what the desktop app ships). If DeepSeek renames or drops
+anything the plugin calls, the build goes red before any user has upgraded.
+
+**One failure nothing can detect:** a method that keeps its name and its signature
+while changing what it does, for instance `cancel` going from "interrupt this turn"
+to "clear the queue". Upgrade and watch for behaviour changes; that is the whole
+point of the version comparison in `/health`.
 
 ### When it stops working
 
