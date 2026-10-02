@@ -1,6 +1,6 @@
 {
   "name": "openclaw-dsh-bridge",
-  "version": "0.2.9",
+  "version": "0.2.10",
   "description": "Drive an existing DeepSeek Harness desktop session from WeChat, Telegram or Yuanbao",
   "type": "module",
   "license": "MIT",

@@ -1224,7 +1224,11 @@ const plugin = {
           forwarding = null;
         }
         note(`done elapsedMs=${Date.now() - startedAt} replyChars=${reply.length}`);
-        return { handled: true, text: reply };
+        // 结尾盖一个完成标记，手机上不用猜这条是不是最后一段。
+        //
+        // 加在正文末尾而不是单独发一条：OpenClaw 的分段是把它切开，标记自然落进
+        // 最后一段，正好是「全部说完之后」。单独发就要多一次发送，而发送本身很慢。
+        return { handled: true, text: `${reply}\n\n[任务完成]` };
       } catch (error) {
         note(`error ${error?.message ?? error}`);
         return { handled: true, text: `桥接出错：${error?.message ?? error}` };
