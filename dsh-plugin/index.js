@@ -227,6 +227,22 @@ const WORKSPACE_FILE = join(DSH_HOME, "storages", "workspace.json");
 // TRASH_ROOT is assigned in apply() from Config, because it is the one path a
 // deployment may reasonably want to move somewhere else.
 
+// Every sessionController method this plugin calls. DSH is pre-1.0 and this set
+// is an internal surface, so it is checked at load and reported by /health
+// rather than discovered one failing route at a time.
+const REQUIRED_CONTROLLER_METHODS = [
+  "cancel",
+  "create",
+  "follow",
+  "inspect",
+  "list",
+  "modelCatalog",
+  "prompt",
+  "rename",
+  "search",
+  "selectModel",
+];
+
 // A session lives at sessions/<slug-of-cwd>/<sessionId>/, where the slug is a
 // lossy encoding of the working directory. Locate it by scanning instead of
 // trying to re-derive that encoding.
@@ -879,6 +895,32 @@ export function apply(ctx, config = {}) {
     },
   }));
 
+  // What this build of DSH is expected to hand us. The plugin drives sessions
+  // through sessionController, which is an internal surface that can change
+  // between releases; when it does, the symptom would otherwise be a bare 500 on
+  // whichever route happens to touch the missing method, with nothing said about
+  // why. Reporting it up front turns that into one clear line.
+  disposers.push(ctx.webServer.register({
+    kind: "exact",
+    path: `${ROUTE_PATH}/health`,
+    handler: async (_req, res) => {
+      try {
+        const sessionController = ctx.get("sessionController");
+        const missing = sessionController
+          ? REQUIRED_CONTROLLER_METHODS.filter((name) => typeof sessionController[name] !== "function")
+          : REQUIRED_CONTROLLER_METHODS.slice();
+        sendJson(res, 200, {
+          ok: missing.length === 0,
+          controllerAvailable: Boolean(sessionController),
+          required: REQUIRED_CONTROLLER_METHODS,
+          missing,
+        });
+      } catch (error) {
+        sendJson(res, 500, { ok: false, error: String(error?.message ?? error) });
+      }
+    },
+  }));
+
   disposers.push(ctx.webServer.register({
     kind: "exact",
     path: ROUTE_PATH,
@@ -886,6 +928,17 @@ export function apply(ctx, config = {}) {
   }));
 
   ctx.logger?.info?.(`phone-bridge listening on ${ROUTE_PATH}`);
+  {
+    const controller = ctx.get("sessionController");
+    const missing = controller
+      ? REQUIRED_CONTROLLER_METHODS.filter((name) => typeof controller[name] !== "function")
+      : REQUIRED_CONTROLLER_METHODS.slice();
+    if (missing.length > 0) {
+      ctx.logger?.warn?.(
+        `phone-bridge: this DSH build is missing ${missing.join(", ")} on sessionController - the routes that use them will fail. GET ${ROUTE_PATH}/health reports the same list.`,
+      );
+    }
+  }
 
   return async () => {
     for (const dispose of disposers) {

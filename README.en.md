@@ -2,24 +2,30 @@
 
 **Pick up the DSH session you are already running on your desktop, from your phone.**
 
-This is not another chat bot for DSH. It lets you switch into an **existing
-desktop session** from a chat app, see where it got to, and keep talking in it.
+Most phone setups add a **new entry point** to DSH: the bot creates its own
+session, so what you say on the phone lives in a different conversation from the
+ones in the desktop sidebar. The two contexts never meet.
+
+This project does the other thing. The list on your phone **is** the list of
+sessions on your desktop. Pick one, what you say lands in that very session, and
+opening it on the desktop continues the same context.
+
+Concretely: you ask DSH on your desktop to look something up, and halfway through
+you have to leave. Another setup hands you a brand new bot and everything you
+said is gone, so you start over. Here you send `/list`, then `/use 3`, and carry
+on from the subway. It remembers all of it, and back at your desk the session is
+still that same thread.
+
+**This shared context is the only real advantage this project has.** On install
+convenience, interface, stability and community validation it is not better than
+more mature options, and on several counts it is worse. The honest list is under
+"Known limitations" below.
 
 English | [中文](README.md)
 
 ---
 
-## How this differs from other DSH phone setups
-
-Most existing projects add a **new chat entry point** to DSH: the bot creates its
-own session under a working directory, and what you say on the phone lives in a
-different conversation from the ones in the desktop sidebar. The two contexts do
-not meet.
-
-This project does the other thing: the list on your phone **is** the list of
-sessions on your desktop. You can switch, search, rename and delete them, and
-what you say lands in that very session, so opening it on the desktop continues
-the same context.
+## How this differs
 
 | | Typical setup | This project |
 |---|---|---|
@@ -64,6 +70,7 @@ the desktop process puts the real `sessionController` within reach.
 - `/model [n]` — list models, or switch to the nth one
 - `/del <n>` — delete (moves to trash, recoverable)
 - `/trash` — inspect the trash; `/restore <n>` puts one back; `/purge` removes for good
+- `/pending` — show a pending question or approval
 - `/help` — everything
 
 > `/stop` is not available: OpenClaw claims it before any plugin hook runs, and it

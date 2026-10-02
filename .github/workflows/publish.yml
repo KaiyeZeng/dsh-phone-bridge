@@ -1,16 +1,38 @@
-name: publish to npm
+name: check and publish
 
-# Publishing is driven by the version field, not by the push itself: each package
-# is published only when its own package.json version is not on npm yet. So an
-# ordinary commit to main publishes nothing, and a release is just "bump the
-# version, commit, push".
+# Two things happen here. The check job runs on every push and pull request and
+# fails on doc/code drift or a plugin that will not load. The publish job keys off
+# the version field rather than the push: a package is published only when its own
+# package.json version is not on npm yet, so an ordinary commit publishes nothing
+# and a release is just "bump the version, commit, push".
 on:
   push:
     branches: [main]
+  pull_request:
   workflow_dispatch:
 
 jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Fails if either half cannot be imported, or its exported contract is wrong.
+      - name: Both halves load
+        run: node scripts/smoke.mjs
+
+      # Fails if a command, config key or route is in the code but not the docs,
+      # or the other way round. This is the check that would have caught the
+      # readme claiming there was no install script two releases after there was.
+      - name: Docs and code agree
+        run: node scripts/check-docs.mjs
+
   publish:
+    needs: check
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     # contents: write is for pushing the release tags below.
     permissions:

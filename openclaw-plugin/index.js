@@ -741,7 +741,7 @@ function helpText() {
     "有挂起的提问/审批时，普通消息当作答（按提示回编号或文字）。",
     "想强行当聊天消息发，用 // 开头。",
     "",
-    "/stop 是 OpenClaw 自己的中断，停不了 DSH 里的任务，要停用 /kill。",
+    "注意：/stop 是 OpenClaw 自己的中断，停不了 DSH 里的任务，要停用 /kill。",
   ].join("\n");
 }
 

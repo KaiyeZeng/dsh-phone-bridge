@@ -37,6 +37,7 @@ trash panel at the bottom of the sidebar where each entry can be restored or pur
 | `POST /stop` | cancel the session's running turn |
 | `GET /models` | the deployment model catalog |
 | `POST /model` | switch the model a session uses |
+| `GET /health` | whether this DSH build still has every `sessionController` method the plugin calls, and which are missing if not |
 
 Deleting **moves** a session to `~/.dsh/deleted-sessions/` instead of unlinking it,
 so a delete stays recoverable and purging is a separate, explicit step.

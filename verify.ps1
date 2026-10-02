@@ -51,6 +51,16 @@ Report "DSH 侧 /phone-bridge/status" ($st -eq '200') ("HTTP " + $st)
 $md = & curl.exe -s -o NUL -w "%{http_code}" http://127.0.0.1:19387/phone-bridge/models 2>$null
 Report "DSH 侧 /phone-bridge/models" ($md -eq '200') ("HTTP " + $md)
 
+# 9. DSH 内部接口是否齐全（DSH 升级后最容易断的地方）
+$hc = & curl.exe -s -o NUL -w "%{http_code}" http://127.0.0.1:19387/phone-bridge/health 2>$null
+if ($hc -eq '200') {
+  $hb = (& curl.exe -s -o - http://127.0.0.1:19387/phone-bridge/health 2>$null) -join ''
+  $hj = $hb | ConvertFrom-Json
+  Report "sessionController 方法齐全" ($hj.missing.Count -eq 0) $(if ($hj.missing.Count -eq 0) { $hj.required.Count.ToString() + " 个都在" } else { "缺: " + ($hj.missing -join ', ') })
+} else {
+  Report "DSH 侧 /phone-bridge/health" $false ("HTTP " + $hc + "  <- 404 说明 DSH 侧插件版本旧，跑 dsh plugin --profile desktop add dsh-phone-bridge 更新")
+}
+
 # 9. OpenClaw 侧插件在不在（npm 安装版 或 扩展目录版，有一种即可）
 $ocHome = Join-Path $env:USERPROFILE '.openclaw'
 $npmVer = Test-Path (Join-Path $ocHome 'npm\projects\openclaw-dsh-bridge')
