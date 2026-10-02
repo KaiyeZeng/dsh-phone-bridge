@@ -33,25 +33,36 @@ English | [中文](README.md)
 | Session management | only "new session" | list / switch / search / rename / delete / trash |
 | Access control | varies | **allowlist** of chat account ids |
 
-## Why the OpenClaw layer is not optional
+## Why there is an OpenClaw layer in the middle
 
-This is the project's biggest barrier to entry, and it is worth saying exactly why
-it cannot simply be removed.
+This is the project's biggest barrier to entry, so it is worth saying where it comes
+from and whether it can be dropped.
 
 **DSH's HTTP port listens on `127.0.0.1` only**, so a phone cannot reach it even on
 the same WiFi (measured: this machine's LAN address is `172.21.61.86`, while the
-port is bound to loopback). Any scheme for driving a local service from a phone
-needs a relay on the computer that both the computer and the phone can reach. That
-is what OpenClaw is doing here, and it brings the WeChat, Telegram and Yuanbao
-channel plumbing along with it.
+port is bound to loopback). Driving DSH from a phone needs two things: **a half that
+runs inside the DSH process** (nothing else can reach the session you are already
+talking to) and **a path from the phone to that computer**.
 
-Dropping it therefore means one of two things: expose DSH's port to the LAN, which
-widens the attack surface considerably (loopback-only routes are one of this
-project's stated security properties), or write another relay plus a phone client.
-This project reuses OpenClaw rather than building its own.
+OpenClaw is one implementation of that path, not the only one. It was chosen because
+it already has the WeChat, Telegram and Yuanbao plumbing, which is far less work than
+writing it.
 
-In other words the layer is not packaging. **It is the path the phone takes to
-reach your computer.**
+**There is a route that does not need OpenClaw**: implement the channel protocol
+yourself. Tencent's iLink Bot API is official and logs in by QR code, so a Node script
+can speak it directly, which is what `gtaifu/dsh-wechat-bridge` does. The cost is
+maintaining the protocol against Tencent's changes, and that route drives `dsh` as a
+headless subprocess, so **it talks to new one-shot sessions rather than the one on
+your desktop**. Whether trading "attaches to the session you already have" for one
+less layer is worth it depends on which you need more.
+
+Without writing a protocol client, the choice is the same two options: expose DSH's
+port to the LAN, which widens the attack surface considerably (loopback-only routes
+are one of this project's stated security properties), or add a relay on the computer
+that both the computer and the phone can reach. This project does the latter.
+
+In other words the layer is not packaging. **It is the path the phone takes to reach
+your computer.**
 
 ## Layout
 
