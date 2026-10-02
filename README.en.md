@@ -96,6 +96,11 @@ dsh plugin --profile <your profile> add dsh-phone-bridge
 `<your profile>` is usually `desktop`. **Restart DSH afterwards** - the client
 half is scanned at startup and config hot-reload does not pick it up.
 
+**Upgrading needs a manual range bump.** `dsh plugin add` will not cross a minor
+version, because for a 0.x package `^` only allows the same minor (`^0.2.4` means
+`>=0.2.4 <0.3.0`), and the command answers `Already up to date`. See "以后怎么升级"
+in [docs/installation.md](docs/installation.md).
+
 The package **ships its own bundle declaration** (`dsh.bundle.patch` pointing at
 its bundled `cordis.patch.yml`), so `dsh plugin add` registers the host row into
 your profile and the client half follows automatically. **No configuration file

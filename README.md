@@ -79,6 +79,8 @@ dsh plugin --profile <你的 profile> add dsh-phone-bridge
 
 `<你的 profile>` 通常是 `desktop`。装完**重启 DSH**——client 半边在启动时扫描，配置热重载对它无效。
 
+**升级要手动改范围**：`dsh plugin add` 不会跨小版本升级，因为 0.x 版本的 `^` 只允许同一个次版本（`^0.2.4` 等于 `>=0.2.4 <0.3.0`），它会回你一句 `Already up to date`。步骤见 [docs/installation.md](docs/installation.md) 的「以后怎么升级」。
+
 这个包**自带 bundle 声明**（`dsh.bundle.patch` 指向包内的 `cordis.patch.yml`），所以 `dsh plugin add` 会把 host 半边的条目注册进 profile，client 半边会跟着自动挂上，**不需要手工编辑任何配置文件**。
 
 **OpenClaw 侧：**

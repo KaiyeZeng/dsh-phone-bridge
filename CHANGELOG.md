@@ -4,6 +4,9 @@
 
 ## openclaw-dsh-bridge
 
+### 0.2.3
+- 帮助里那行说明 `/stop` 改以「注意：」开头。原文以 `/stop` 开头，读起来本身就像一条指令条目，会被文档一致性检查当成「帮助里列了一个实际不存在的指令」
+
 ### 0.2.2
 - 去掉 `openclaw.plugin.json` 里的 UTF-8 BOM。OpenClaw 加载时容忍它，但 `openclaw plugins validate` 会把清单判成坏 JSON，装完跑 doctor 会看到一个莫名其妙的报错
 - 对应提交：本版之前的内容见 `3b2ef0a`
@@ -23,6 +26,17 @@
 - 没有发布到 npm，靠手工拷贝到 `~/.openclaw/extensions/` 使用
 
 ## dsh-phone-bridge
+
+### 0.2.4
+- 新增 `GET /phone-bridge/health`：报告当前 DSH 版本是否还具备插件用到的全部 `sessionController` 方法，缺哪个列哪个
+- 插件加载时也做同一项检查，缺方法就在启动日志里点名，不再等到某个路由撞上 500 才知道
+- README 开头改为突出唯一真正差异化的点（接桌面已有会话、共用同一段上下文），并写明安装便利、界面、稳定性、社区验证这几项并不占优
+- README 与安装文档补上「升级为什么会说 Already up to date」：0.x 版本的 `^` 只允许同一个次版本，升级要先手动改 profile 里的范围
+- 仓库新增 CI 前置检查：`scripts/smoke.mjs`（两个半边能否加载、导出契约是否正确）与 `scripts/check-docs.mjs`（指令、配置项、路由的文档与代码是否一致），文档漂移会直接挡住发布
+
+### 0.2.3
+- 包内 README 补上 OpenClaw 那半的安装命令和两个必需参数，以及「扩展目录里不能有第二份副本」的提醒
+- 这一版由 GitHub Actions 自动发布，是发布流程的首次实测
 
 ### 0.2.2
 - 包内 README 补上 OpenClaw 那半的安装命令和那两个必需参数，以及「扩展目录里不能有第二份副本」的提醒

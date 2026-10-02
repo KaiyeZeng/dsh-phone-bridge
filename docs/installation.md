@@ -24,6 +24,22 @@ dsh plugin --profile desktop list
 
 包名出现在列表里就说明装上了。
 
+### 以后怎么升级
+
+**`dsh plugin add` 不会自动跨小版本升级，这点很容易被坑。** profile 的 `package.json` 里记的是 `^0.2.4` 这样的范围，而 npm 的规则是：**0.x 版本的 `^` 只允许同一个次版本**（`^0.2.4` 等于 `>=0.2.4 <0.3.0`）。所以装了 `0.2.x` 之后，`0.3.0` 不会被拉上来，命令还会回你一句 `Already up to date`。
+
+升级要走两步。先改范围：
+
+```powershell
+notepad C:\Users\曾楷烨\.dsh\profiles\desktop\package.json
+```
+
+把 `dependencies` 里 `dsh-phone-bridge` 的值改成你要的版本（例如 `^0.3.0`），保存后重跑：
+
+```powershell
+dsh plugin --profile desktop add dsh-phone-bridge
+```
+
 ### 2. 重启 DSH
 
 配置热重载对**新增插件**不生效（对已有插件的配置改动才生效）。**必须完整重启 DSH**，client 半边也只在启动时扫描。
