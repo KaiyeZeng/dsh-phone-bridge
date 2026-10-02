@@ -155,8 +155,16 @@ Please:
   fields and **refuses the request** when none of them resolve.
 - **It uses DSH internals** (slot names, `sessionController`, the directory
   layout under `~/.dsh`). A DSH upgrade can break it.
-- **There is no install script.** Two configuration files still have to be
-  edited by hand.
+- **`/kill` cancels cooperatively.** It interrupts the running turn, but a long
+  command that ignores interrupts, a one-shot `sleep` for instance, has to finish
+  on its own first. The acknowledgement comes back immediately; receiving it does
+  not mean the work has stopped.
+- **`/stop` does not work, and neither do the obvious alternatives.** OpenClaw
+  claims `/stop`, `/halt`, `/abort`, `/interrupt`, `/exit`, `/停止` and `/暂停`
+  before any plugin hook runs, and its handler aborts OpenClaw's own reply rather
+  than the DSH session. Use `/kill`.
+- **A freshly published npm version takes a few minutes to resolve.** `npm view`
+  may answer 404 in the meantime; that is not a failed publish.
 
 ## Compatibility
 
@@ -164,7 +172,7 @@ Both halves depend on DSH and OpenClaw internals, which can change between
 releases. When it stops working, check in this order:
 
 1. **DSH side route not mounted** — look for `phone-bridge listening on /phone-bridge` in the DSH startup log
-2. **`sessionController` changed** — its use is concentrated in `runTurn` and a few route handlers in `dsh-plugin`
+2. **`sessionController` changed** — only `cancel`, `create`, `follow`, `inspect`, `list`, `modelCatalog`, `prompt`, `rename`, `search` and `selectModel` are used, all called from `dsh-plugin/index.js`
 3. **Directory layout under `~/.dsh` changed** — sessions live in `sessions/<encoded cwd>/<sessionId>/`, projection caches in `storages/session_projcache/sessions/`
 4. **OpenClaw hook changed** — it uses `api.on("before_dispatch", ...)`, not `api.registerHook` (the latter never fires for this event)
 

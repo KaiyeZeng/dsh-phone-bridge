@@ -44,6 +44,24 @@ Report "通知插件 /dsh-notify/state" ($n2 -eq '200') ("HTTP " + $n2 + $(if ($
 $log = Join-Path $env:LOCALAPPDATA 'dsh-bridge\hook.log'
 Report "OpenClaw 插件日志" (Test-Path $log) $(if (Test-Path $log) { $log } else { "还没生成，说明 OpenClaw 侧没收到过消息" })
 
+# 8. 后加的路由也要活着（/status 与 /models）
+$st = & curl.exe -s -o NUL -w "%{http_code}" http://127.0.0.1:19387/phone-bridge/status 2>$null
+Report "DSH 侧 /phone-bridge/status" ($st -eq '200') ("HTTP " + $st)
+
+$md = & curl.exe -s -o NUL -w "%{http_code}" http://127.0.0.1:19387/phone-bridge/models 2>$null
+Report "DSH 侧 /phone-bridge/models" ($md -eq '200') ("HTTP " + $md)
+
+# 9. OpenClaw 侧插件在不在（npm 安装版 或 扩展目录版，有一种即可）
+$ocHome = Join-Path $env:USERPROFILE '.openclaw'
+$npmVer = Test-Path (Join-Path $ocHome 'npm\projects\openclaw-dsh-bridge')
+$extVer = Test-Path (Join-Path $ocHome 'extensions\dsh-bridge')
+Report "OpenClaw 侧插件" ($npmVer -or $extVer) ("npm 安装版=" + $npmVer + "  扩展目录版=" + $extVer)
+
+# 10. 重复副本会让同一条消息被转发两次
+$dupes = @(Get-ChildItem (Join-Path $ocHome 'extensions') -Directory -ErrorAction SilentlyContinue |
+  Where-Object { Test-Path (Join-Path $_.FullName 'openclaw.plugin.json') })
+Report "没有重复插件副本" ($dupes.Count -le 1) $(if ($dupes.Count -le 1) { "干净" } else { ($dupes | ForEach-Object { $_.Name }) -join ', ' })
+
 Write-Host ("=" * 50)
 Write-Host ("通过 " + $ok + " 项，失败 " + $bad + " 项") -ForegroundColor $(if ($bad -eq 0) { 'Green' } else { 'Yellow' })
 if ($bad -gt 0) {

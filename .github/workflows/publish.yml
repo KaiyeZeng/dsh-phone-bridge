@@ -12,10 +12,13 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    # contents: write is for pushing the release tags below.
     permissions:
-      contents: read
+      contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -23,10 +26,12 @@ jobs:
           registry-url: https://registry.npmjs.org
 
       - name: Publish every package whose version is new
+        id: pub
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           set -euo pipefail
+          published=""
           for dir in dsh-plugin openclaw-plugin; do
             name=$(node -p "require('./$dir/package.json').name")
             version=$(node -p "require('./$dir/package.json').version")
@@ -36,4 +41,26 @@ jobs:
             fi
             echo "::notice::publishing $name@$version"
             (cd "$dir" && npm publish)
+            published="$published $dir"
+          done
+          echo "published=$published" >> "$GITHUB_OUTPUT"
+
+      # The two packages version independently, so the tag carries which one it
+      # belongs to: dsh-plugin-v0.2.3, openclaw-plugin-v0.2.2.
+      - name: Tag what was published
+        if: steps.pub.outputs.published != ''
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          for dir in ${{ steps.pub.outputs.published }}; do
+            version=$(node -p "require('./$dir/package.json').version")
+            tag="${dir}-v${version}"
+            if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+              echo "::notice::$tag already exists, skipping"
+              continue
+            fi
+            git tag -a "$tag" -m "$tag"
+            git push origin "$tag"
+            echo "::notice::tagged $tag"
           done

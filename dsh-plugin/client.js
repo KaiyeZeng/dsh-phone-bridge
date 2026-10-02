@@ -1,4 +1,4 @@
-// Client half of the dsh-session-purge package.
+// Client half of the dsh-phone-bridge package.
 //
 // This file is the built client artifact. DSH's client-modules scanner expects
 // exports["./client"] to contain a `window.__ModuleLoader__.load({...})` bundle

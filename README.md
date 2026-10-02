@@ -129,14 +129,16 @@ openclaw plugins install openclaw-dsh-bridge --force --accept-capabilities
 - **依赖 OpenClaw**。不想装 OpenClaw 的话这个方案用不了。
 - **微信渠道拿不到发送者 ID 的情况**：某些渠道的 `event.senderId` 是空的，身份要从上下文里取。插件会尝试多个字段，一个都取不到时**拒绝请求**（宁可不响应）。
 - **走的是 DSH 内部接口**（插槽、`sessionController`、`~/.dsh` 下的目录布局）。DSH 升级可能失效，见下面的兼容性说明。
-- **没有安装脚本**。目前要手工改两处配置。
+- **`/kill` 是协作式取消**。它会中断正在进行的对话轮次，但如果当前跑的是一条不响应中断的长命令（比如一次性的 `sleep`），要等它自己结束才真正停下。回执是立刻返回的，**收到回执不等于任务已经停了**。
+- **`/stop` 用不了**，别试。它是 OpenClaw 自己的中断指令，在插件之前就被截走，而且只掐断 OpenClaw 的回复，不会停 DSH 里的任务。同理 `/halt`、`/abort`、`/interrupt`、`/exit`、`/停止`、`/暂停` 也都被它占用。
+- **npm 刚发布的版本要几分钟才可查**。这期间 `npm view` 可能报 404，不是发布失败。
 
 ## 兼容性
 
 两个半边都依赖 DSH 与 OpenClaw 的内部实现，版本升级可能失灵。失效时按这个顺序查：
 
 1. **DSH 侧路由没挂上** → 看 DSH 启动日志里有没有 `phone-bridge listening on /phone-bridge`
-2. **`sessionController` 变了** → `dsh-plugin` 里对它的调用集中在 `runTurn` 和几个路由里
+2. **`sessionController` 变了** → 用到的方法只有 `cancel`、`create`、`follow`、`inspect`、`list`、`modelCatalog`、`prompt`、`rename`、`search`、`selectModel` 这几个，调用全在 `dsh-plugin/index.js` 里
 3. **`~/.dsh` 下的目录布局变了** → 会话在 `sessions/<cwd 编码>/<sessionId>/`，投影缓存在 `storages/session_projcache/sessions/`
 4. **OpenClaw 的钩子变了** → 用 `api.on("before_dispatch", ...)`，不是 `api.registerHook`（后者对这个事件不生效）
 
