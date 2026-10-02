@@ -502,14 +502,26 @@ async function showStatus() {
 
 // Stop whatever the current session is running. The bridge cancels with
 // keepInbox, so messages you already sent are not thrown away with the turn.
+//
+// The request is sent and then left alone: this does NOT await the round trip.
+// Awaiting it made the command useless in the one situation it exists for. Sent
+// from the phone partway through a turn, /kill drew no answer until that turn
+// ended - even though the DSH route answers in milliseconds when the same POST
+// is made by hand, with the session just as busy. The hook is the wrong thing to
+// hold open; it confirms now and records the outcome when it lands.
 async function stopSession() {
   const current = readState().sessionId ?? "";
   if (!current) return "还没指定会话。发 /list 看列表后用 /use <序号>。";
 
-  const result = await httpJson("POST", `${BRIDGE_URL}/stop`, { sessionId: current });
-  if (!result.ok) return `停止失败：${result.error}`;
-  note(`stopped ${current}`);
-  return `已请求停下 ${shortId(current)} 正在跑的任务。\n已经排队发出去的消息还在，它会接着处理。`;
+  const startedAt = Date.now();
+  void httpJson("POST", `${BRIDGE_URL}/stop`, { sessionId: current })
+    .then((result) => {
+      const ms = Date.now() - startedAt;
+      note(result.ok ? `stopped ${current} in ${ms}ms` : `stop failed after ${ms}ms: ${result.error}`);
+    })
+    .catch((error) => note(`stop error ${String(error?.message ?? error)}`));
+
+  return `已发出停止请求：${shortId(current)}。\n它到下个步骤边界就会停；如果正在跑的是一个不响应中断的长命令，得等它自己结束。`;
 }
 
 // Read the catalog this DSH build actually returns: groups of models, where the
@@ -692,40 +704,44 @@ function identityCandidates(event, ctx) {
 
 // One place to look up the command set. Kept in sync with the handlers below -
 // when adding a command, add it here too.
+// One command per line, with no column padding. A fixed-width layout lines up in
+// a terminal and falls apart in a chat bubble, where wrapping and a proportional
+// font turn the gaps into ragged columns. The fullwidth bar keeps the command
+// and its description visually separate without depending on space counts.
 function helpText() {
   return [
     "手机桥指令",
     "",
     "会话",
-    "  /list [页码]        列出会话，默认每页 15 条",
-    "  /find <关键词>      按标题（任务名）查会话",
-    "  /find-any <关键词>  按消息内容全文搜",
-    "  /new [标题]         新建会话并切过去",
-    "  /use <序号>         指定目标会话",
-    "  /where              查看当前会话、工作目录与活跃时间",
-    "  /name <标题>        给当前会话命名（电脑端同步显示）",
-    "  /status             当前会话状态、工作目录与活跃时间",
+    "/list [页码]｜列出会话，每页 15 条",
+    "/find <关键词>｜按标题（任务名）查",
+    "/find-any <关键词>｜按消息正文全文搜",
+    "/new [标题]｜新建会话并切过去",
+    "/use <序号>｜指定目标会话",
+    "/where｜当前会话、工作目录、活跃时间",
+    "/name <标题>｜给当前会话命名",
+    "/status｜当前会话的状态",
     "",
     "运行控制",
-    "  /kill               停下当前会话正在跑的任务",
-    "  /model [序号]       查看或切换当前会话用的模型",
-    "  注意：/stop 是 OpenClaw 自己的中断，只会掐断它的回复，",
-    "  不会停 DSH 里的任务。要停 DSH 的任务用 /kill。",
+    "/kill｜停下当前会话正在跑的任务",
+    "/model [序号]｜查看可用模型；带序号就是切换",
     "",
     "删除与回收站",
-    "  /del <序号>         删除会话，移进回收站可恢复",
-    "  /trash              查看回收站内容与占用",
-    "  /restore <序号>     把回收站里的一项放回原位置",
-    "  /purge [序号]       彻底抹除，不带序号是全部",
-    "  确认用 /del! 或 /purge!，取消用 /del-out 或 /purge-out",
+    "/del <序号>｜删除，移进回收站可恢复",
+    "/trash｜查看回收站内容与占用",
+    "/restore <序号>｜把回收站里的一项放回原位置",
+    "/purge [序号]｜彻底抹除；不带序号是全部",
+    "确认回 /del! 或 /purge!，取消回 /del-out 或 /purge-out",
     "",
     "其他",
-    "  /help               显示这份列表",
-    "  /pending            查看挂起的提问/审批",
+    "/help｜显示这份列表",
+    "/pending｜查看挂起的提问/审批",
     "",
-    "普通消息会发给当前指定的会话；没指定过就先 /list 或 /new。",
-    "有挂起的提问/审批时，普通消息会被当作作答（按提示回编号或文字）；",
+    "普通消息会发给当前会话；没指定过就先 /list 或 /new。",
+    "有挂起的提问/审批时，普通消息当作答（按提示回编号或文字）。",
     "想强行当聊天消息发，用 // 开头。",
+    "",
+    "/stop 是 OpenClaw 自己的中断，停不了 DSH 里的任务，要停用 /kill。",
   ].join("\n");
 }
 
