@@ -295,10 +295,12 @@ function listTrash() {
 }
 
 export function apply(ctx, config = {}) {
-  // Settings come from the row's `config:` block. Fall back to ctx.config for a
-  // loader that hands the resolved config on the context instead, then to the
-  // defaults, so mounting with nothing at all still works.
-  const settings = { ...DEFAULTS, ...(config ?? {}), ...(ctx?.config ?? {}) };
+  // Settings come from the row's `config:` block, handed in as apply()'s second
+  // argument by the host runner. Do NOT read ctx.config here: DSH runs host
+  // halves inside a sandbox Proxy whose get trap throws on any property that is
+  // not an injected service, and `?.` cannot swallow a throw. `config` is
+  // already the resolved value, so merge it over the defaults.
+  const settings = { ...DEFAULTS, ...(config ?? {}) };
 
   ROUTE_PATH = String(settings.routePath || DEFAULTS.routePath);
   DEFAULT_TIMEOUT_MS = Number(settings.timeoutMs) > 0 ? Number(settings.timeoutMs) : DEFAULTS.timeoutMs;

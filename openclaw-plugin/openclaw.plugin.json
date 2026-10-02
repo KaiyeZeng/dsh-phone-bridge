@@ -1,0 +1,52 @@
+﻿{
+  "id": "dsh-bridge",
+  "name": "DSH Bridge",
+  "description": "Drive an existing DeepSeek Harness desktop session from a chat app",
+  "categories": ["other"],
+  "enabledByDefault": false,
+  "activation": {
+    "onStartup": true
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "enabled": {
+        "type": "boolean",
+        "description": "Master switch for the forwarding hook"
+      },
+      "allowedSenders": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "Sender ids allowed to reach DeepSeek Harness. Empty means allow everyone, which is dangerous: this channel runs DSH with approvals disabled, so anyone who can message the bot could drive your machine."
+      },
+      "allowGroups": {
+        "type": "boolean",
+        "description": "Also forward group-chat messages. Default false."
+      },
+      "bridgeUrl": {
+        "type": "string",
+        "description": "Base URL of the DSH-side plugin routes. Default http://127.0.0.1:19387/phone-bridge"
+      },
+      "notifyUrl": {
+        "type": "string",
+        "description": "Base URL of the notify plugin's pending question / approval endpoint. Default http://127.0.0.1:19387/dsh-notify"
+      },
+      "pageSize": {
+        "type": "number",
+        "minimum": 1,
+        "description": "Entries per page in the /list command. Default 15."
+      },
+      "turnTimeoutMs": {
+        "type": "number",
+        "minimum": 1,
+        "description": "How long to wait for one answer before giving up, in milliseconds. Default 300000."
+      },
+      "timeoutSeconds": {
+        "type": "number",
+        "minimum": 1,
+        "description": "Deprecated alias for turnTimeoutMs. Kept so an existing config keeps working."
+      }
+    }
+  }
+}

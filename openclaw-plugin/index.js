@@ -539,6 +539,8 @@ const plugin = {
     if (config.notifyUrl) ANSWER_URL = String(config.notifyUrl).trim();
     if (Number(config.pageSize) > 0) PAGE_SIZE = Number(config.pageSize);
     if (Number(config.turnTimeoutMs) > 0) TURN_TIMEOUT_MS = Number(config.turnTimeoutMs);
+    // timeoutSeconds is the older name for the same setting; keep honouring it.
+    else if (Number(config.timeoutSeconds) > 0) TURN_TIMEOUT_MS = Number(config.timeoutSeconds) * 1000;
 
     api.on("before_dispatch", async (event, ctx) => {
       const text = String(event?.content ?? event?.body ?? "").trim();
