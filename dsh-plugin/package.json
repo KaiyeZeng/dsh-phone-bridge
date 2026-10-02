@@ -1,0 +1,18 @@
+{
+  "name": "dsh-phone-bridge",
+  "version": "0.1.0",
+  "description": "DSH plugin: loopback HTTP routes that let an external caller drive an existing desktop session",
+  "type": "module",
+  "main": "index.js",
+  "license": "MIT",
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "plugin",
+    "session",
+    "remote"
+  ],
+  "peerDependencies": {
+    "@deepseek-ai/schemastery": "^3.18.3"
+  }
+}
