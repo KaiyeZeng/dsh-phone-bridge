@@ -1,0 +1,13 @@
+# dsh-phone-bridge bundle patch.
+#
+# One host entry. The host half (index.js) exposes the loopback routes that
+# drive the real sessionController; the client half (client.js) is the desktop
+# sidebar delete button and trash panel, picked up automatically through the
+# package's dsh.client declaration and exports["./client"].
+#
+# name is the package name, resolved from node_modules once `dsh plugin add`
+# installs it. Row order carries no load semantics.
+
+- insert:
+    - id: dsh-phone-bridge
+      name: 'dsh-phone-bridge'
