@@ -1,4 +1,4 @@
-# dsh-phone-bridge bundle patch.
+# dsh-wechat-bridge bundle patch.
 #
 # One host entry. The host half (index.js) exposes the loopback routes that
 # drive the real sessionController; the client half (client.js) is the desktop
@@ -9,5 +9,5 @@
 # installs it. Row order carries no load semantics.
 
 - insert:
-    - id: dsh-phone-bridge
-      name: 'dsh-phone-bridge'
+    - id: dsh-wechat-bridge
+      name: 'dsh-wechat-bridge'

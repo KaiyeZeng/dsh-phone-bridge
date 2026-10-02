@@ -1,4 +1,4 @@
-# dsh-phone-bridge
+# dsh-wechat-bridge
 
 **用手机接着你电脑上正在聊的那个 DSH 会话。**
 
@@ -8,7 +8,7 @@
 
 具体一点。你在电脑上让 DSH 查个东西，聊到一半要出门。别的方案会给你一个全新机器人，前面聊的全部丢失，你得重新交代一遍。这个方案你在地铁上 `/list`、`/use 3`，接着问，它记得前面所有内容；回家打开电脑，还是那条线，历史都在。
 
-**这是本项目唯一的差异化优势。** 其他方面（安装便利、界面、稳定性、社区验证）它并不比成熟方案强，有几项还更弱，都写在「已知限制」里。
+**这是它最大的优势。** 别的方案给你一个新机器人，这个让你接着自己那条线说。
 
 [English](README.en.md) | 中文
 
@@ -89,7 +89,7 @@
 **DSH 侧：**
 
 ```
-dsh plugin --profile <你的 profile> add dsh-phone-bridge
+dsh plugin --profile <你的 profile> add dsh-wechat-bridge
 ```
 
 `<你的 profile>` 通常是 `desktop`。装完**重启 DSH**——client 半边在启动时扫描，配置热重载对它无效。
@@ -101,7 +101,7 @@ dsh plugin --profile <你的 profile> add dsh-phone-bridge
 **OpenClaw 侧：**
 
 ```
-openclaw plugins install openclaw-dsh-bridge --force --accept-capabilities
+openclaw plugins install openclaw-dsh-wechat-bridge --force --accept-capabilities
 ```
 
 两个参数都得带，缺一个装不上。装完在 `openclaw.json` 里放行并配置（见下一节）。完整步骤见 [docs/installation.md](docs/installation.md)。

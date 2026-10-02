@@ -1,4 +1,4 @@
-# openclaw-dsh-bridge
+# openclaw-dsh-wechat-bridge
 
 Drive an existing **DeepSeek Harness desktop** session from WeChat, Telegram or
 Yuanbao. Messages you send from the phone land in the desktop session you pick,
@@ -8,15 +8,15 @@ and its reply comes back to the chat.
 > has nothing to talk to:
 >
 > ```powershell
-> dsh plugin --profile desktop add dsh-phone-bridge
+> dsh plugin --profile desktop add dsh-wechat-bridge
 > ```
 >
-> Both halves live in <https://github.com/KaiyeZeng/dsh-phone-bridge>.
+> Both halves live in <https://github.com/KaiyeZeng/dsh-wechat-bridge>.
 
 ## Install
 
 ```powershell
-openclaw plugins install openclaw-dsh-bridge
+openclaw plugins install openclaw-dsh-wechat-bridge
 ```
 
 Then set your own sender id in the plugin config before anyone else can reach it.

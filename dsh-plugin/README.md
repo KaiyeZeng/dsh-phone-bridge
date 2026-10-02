@@ -1,4 +1,4 @@
-# dsh-phone-bridge
+# dsh-wechat-bridge
 
 Drive an existing DeepSeek Harness **desktop** session from a chat app, and manage
 sessions from the sidebar.
@@ -10,7 +10,7 @@ sessions from the sidebar.
 ## Install
 
 ```powershell
-dsh plugin --profile desktop add dsh-phone-bridge
+dsh plugin --profile desktop add dsh-wechat-bridge
 ```
 
 Then restart DSH. The package carries its own `dsh.bundle.patch`, so no config file
@@ -49,7 +49,7 @@ This package is only the DSH half. To talk to it from WeChat, Telegram or Yuanba
 you also need the OpenClaw plugin:
 
 ```powershell
-openclaw plugins install openclaw-dsh-bridge --force --accept-capabilities
+openclaw plugins install openclaw-dsh-wechat-bridge --force --accept-capabilities
 ```
 
 Both flags are required and the error does not say which one is missing. `--force`
@@ -61,7 +61,7 @@ loads every subdirectory there that carries an `openclaw.plugin.json`, so a stal
 backup folder gets loaded too, and two copies sharing one id forward every message
 twice.
 
-Source and setup guide: <https://github.com/KaiyeZeng/dsh-phone-bridge>
+Source and setup guide: <https://github.com/KaiyeZeng/dsh-wechat-bridge>
 
 ## Notes
 

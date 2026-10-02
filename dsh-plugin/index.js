@@ -24,7 +24,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, s
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 
-export const name = "dsh-phone-bridge";
+export const name = "dsh-wechat-bridge";
 
 // Wait until webServer exists; the session controller is fetched lazily inside
 // the request so a slow-to-appear service cannot block plugin activation.

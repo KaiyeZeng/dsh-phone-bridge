@@ -1,4 +1,4 @@
-# dsh-phone-bridge
+# dsh-wechat-bridge
 
 **Pick up the DSH session you are already running on your desktop, from your phone.**
 
@@ -16,10 +16,8 @@ said is gone, so you start over. Here you send `/list`, then `/use 3`, and carry
 on from the subway. It remembers all of it, and back at your desk the session is
 still that same thread.
 
-**This shared context is the only real advantage this project has.** On install
-convenience, interface, stability and community validation it is not better than
-more mature options, and on several counts it is worse. The honest list is under
-"Known limitations" below.
+**This is its biggest advantage.** Other options hand you a new bot; this one lets
+you carry on your own thread.
 
 English | [中文](README.md)
 
@@ -119,7 +117,7 @@ Two sides, **one command each**.
 **DSH side:**
 
 ```
-dsh plugin --profile <your profile> add dsh-phone-bridge
+dsh plugin --profile <your profile> add dsh-wechat-bridge
 ```
 
 `<your profile>` is usually `desktop`. **Restart DSH afterwards** - the client
@@ -138,7 +136,7 @@ has to be edited by hand.**
 **OpenClaw side:**
 
 ```
-openclaw plugins install openclaw-dsh-bridge --force --accept-capabilities
+openclaw plugins install openclaw-dsh-wechat-bridge --force --accept-capabilities
 ```
 
 Both flags are required; without either one the install fails. Then allow and

@@ -52,8 +52,8 @@ body:
     id: side-versions
     attributes:
       label: 两个包的版本
-      description: 'dsh-phone-bridge 和 openclaw-dsh-bridge 各自装的是哪个版本。注意 dsh plugin add 不会跨小版本升级，见安装文档'
-      placeholder: dsh-phone-bridge 0.2.4 / openclaw-dsh-bridge 0.2.4
+      description: 'dsh-wechat-bridge 和 openclaw-dsh-wechat-bridge 各自装的是哪个版本。注意 dsh plugin add 不会跨小版本升级，见安装文档'
+      placeholder: dsh-wechat-bridge 0.2.4 / openclaw-dsh-wechat-bridge 0.2.4
   - type: input
     id: channel
     attributes:
