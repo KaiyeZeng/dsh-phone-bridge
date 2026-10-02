@@ -44,9 +44,22 @@ so a delete stays recoverable and purging is a separate, explicit step.
 ## The chat side
 
 This package is only the DSH half. To talk to it from WeChat, Telegram or Yuanbao
-you also need the OpenClaw plugin from the same repository:
+you also need the OpenClaw plugin:
 
-<https://github.com/KaiyeZeng/dsh-phone-bridge>
+```powershell
+openclaw plugins install openclaw-dsh-bridge --force --accept-capabilities
+```
+
+Both flags are required and the error does not say which one is missing. `--force`
+because the package lives on npm rather than OpenClaw's own ClawHub, and
+`--accept-capabilities` because the plugin declares capabilities.
+
+Make sure `~/.openclaw/extensions/` holds no second copy of the plugin: OpenClaw
+loads every subdirectory there that carries an `openclaw.plugin.json`, so a stale
+backup folder gets loaded too, and two copies sharing one id forward every message
+twice.
+
+Source and setup guide: <https://github.com/KaiyeZeng/dsh-phone-bridge>
 
 ## Notes
 
