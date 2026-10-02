@@ -512,10 +512,39 @@ async function stopSession() {
   return `已请求停下 ${shortId(current)} 正在跑的任务。\n已经排队发出去的消息还在，它会接着处理。`;
 }
 
-// The catalog's shape is not a stable surface, so walk it and keep anything
-// carrying a model id rather than assuming a layout. A shape change then means
-// a shorter list, not a crash.
+// Read the catalog this DSH build actually returns: groups of models, where the
+// group id is the provider id and each model carries id + name.
+//
+//   { default: {provider, model}, groups: [{ id, name, models: [{ id, name }] }] }
+//
+// A structural walk covers a build whose shape differs, so a change there
+// shortens the list instead of crashing. The walk alone is not enough as the
+// primary path: it also matches the group object itself (it has an id) and never
+// sees a provider, so every entry would come back unswitchable.
 function flattenCatalog(catalog) {
+  const fromGroups = [];
+  if (Array.isArray(catalog?.groups)) {
+    for (const group of catalog.groups) {
+      if (!group || typeof group !== "object") continue;
+      const provider = String(group.id ?? group.provider ?? "").trim();
+      for (const entry of Array.isArray(group.models) ? group.models : []) {
+        if (!entry || typeof entry !== "object") continue;
+        const model = String(entry.id ?? entry.model ?? "").trim();
+        if (!model) continue;
+        fromGroups.push({
+          provider,
+          model,
+          label: String(entry.name ?? entry.label ?? model).trim() || model,
+        });
+      }
+    }
+  }
+  if (fromGroups.length) return fromGroups;
+  return walkCatalog(catalog);
+}
+
+// Fallback for an unfamiliar shape: keep anything carrying a model id.
+function walkCatalog(catalog) {
   const found = [];
   const seen = new Set();
   const visit = (node, depth) => {
@@ -545,6 +574,14 @@ function flattenCatalog(catalog) {
   return found;
 }
 
+// Whether this row is the deployment default, so the listing can mark which one
+// DSH reaches for when a session has made no explicit choice.
+function isCatalogDefault(catalog, entry) {
+  const provider = String(catalog?.default?.provider ?? "").trim();
+  const model = String(catalog?.default?.model ?? "").trim();
+  return Boolean(model) && entry.model === model && entry.provider === provider;
+}
+
 // Remember the last listing so /model <序号> can refer to a row.
 async function showModels() {
   const result = await httpJson("GET", `${BRIDGE_URL}/models`);
@@ -557,9 +594,10 @@ async function showModels() {
   state.lastModels = models;
   writeState(state);
 
-  const lines = models.slice(0, PAGE_SIZE).map((entry, index) =>
-    `${index + 1}. ${entry.provider ? `${entry.provider} / ` : ""}${entry.label}`,
-  );
+  const lines = models.slice(0, PAGE_SIZE).map((entry, index) => {
+    const name = `${entry.provider ? `${entry.provider} / ` : ""}${entry.label}`;
+    return `${index + 1}. ${name}${isCatalogDefault(result.catalog, entry) ? "（默认）" : ""}`;
+  });
   const more = models.length > PAGE_SIZE ? [`（只显示前 ${PAGE_SIZE} 个）`] : [];
   return [
     `可用模型：${models.length} 个`,

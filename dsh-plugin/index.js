@@ -257,6 +257,24 @@ function listOnDiskSessionIds() {
   return ids;
 }
 
+// Pull just the title out of a session's projection bag.
+//
+// The bag also carries token counts, context pressure, the turn outline and the
+// subagent catalog. On a long session that is tens of kilobytes, and a session
+// list or a status line needs none of it - the title is the only part that makes
+// a session identifiable. The key is not guaranteed across versions, so probe
+// the plausible names the same way the phone side does.
+function titleFromProjections(values) {
+  for (const key of ["title", "sessionTitle", "name", "label"]) {
+    const value = values?.[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+    if (value && typeof value === "object" && typeof value.title === "string" && value.title.trim()) {
+      return value.title.trim();
+    }
+  }
+  return "";
+}
+
 // The ids the desktop sidebar would actually list.
 //
 // The sidebar renders DSH's workspace registry (workspaces[<id>].sessionIds),
@@ -390,9 +408,9 @@ export function apply(ctx, config = {}) {
           running: Boolean(item.running),
           blank: Boolean(item.blank),
           cwd: item.cwd ?? "",
-          // Projection values carry derived per-session data such as the
-          // generated title, which is what makes a session identifiable.
-          projections: item.projections?.values ?? null,
+          // Only the title is sent: the full projection bag runs to tens of
+          // kilobytes per session on a long one, and the phone lists these.
+          projections: { title: titleFromProjections(item.projections?.values) },
         }));
         sendJson(res, 200, { ok: true, sessions });
       } catch (error) {
@@ -749,7 +767,7 @@ export function apply(ctx, config = {}) {
             blank: Boolean(found?.blank),
             cwd: found?.cwd ?? "",
             updatedAt: found?.updatedAt ?? null,
-            projections: found?.projections?.values ?? null,
+            projections: { title: titleFromProjections(found?.projections?.values) },
           };
         }
 
