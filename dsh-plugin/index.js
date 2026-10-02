@@ -23,7 +23,6 @@ import { randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
-import Schema from "@deepseek-ai/schemastery";
 
 export const name = "dsh-phone-bridge";
 
@@ -31,29 +30,38 @@ export const name = "dsh-phone-bridge";
 // the request so a slow-to-appear service cannot block plugin activation.
 export const inject = ["webServer"];
 
-// Every knob a deployment might want to change lives here, so the plugin can be
-// installed on any machine without editing the source.
-export const Config = Schema.object({
+// Deliberately no `export const Config` schema here.
+//
+// Declaring one means importing @deepseek-ai/schemastery, which resolves only
+// when the plugin is installed as a package with its own node_modules. A
+// file:// mount has none, and the import then fails at load time, taking the
+// whole plugin (and with it the phone bridge) down. Keeping this file on
+// node: builtins alone is what lets it be mounted straight from disk.
+//
+// Settings therefore arrive as apply()'s second argument, filled in from the
+// `config:` block of the row in cordis.patch.yml. Anything absent falls back to
+// the defaults below, so mounting the plugin with no config at all works.
+const DEFAULTS = {
   // Where the routes are mounted. Change it if something else already owns
   // /phone-bridge; the external caller has to use the same value.
-  routePath: Schema.string().default("/phone-bridge"),
+  routePath: "/phone-bridge",
   // Default budget for one prompt turn when the caller does not pass timeoutMs.
-  timeoutMs: Schema.number().default(300000),
+  timeoutMs: 300000,
   // How often the turn loop re-reads the session for new events.
-  pollIntervalMs: Schema.number().default(1000),
+  pollIntervalMs: 1000,
   // Request bodies larger than this are refused.
-  maxBodyBytes: Schema.number().default(1024 * 1024),
+  maxBodyBytes: 1024 * 1024,
   // Where deleted sessions are parked. Empty means <dsh home>/deleted-sessions.
-  trashDir: Schema.string().default(""),
-});
+  trashDir: "",
+};
 
-// Seeded from Config in apply(). Kept at module scope because the helpers below
-// read them, and re-threading a config object through every one of them would
-// touch far more code than it is worth.
-let ROUTE_PATH = "/phone-bridge";
-let DEFAULT_TIMEOUT_MS = 300000;
-let POLL_INTERVAL_MS = 1000;
-let MAX_BODY_BYTES = 1024 * 1024;
+// Seeded from the resolved settings in apply(). Kept at module scope because the
+// helpers below read them, and re-threading a config object through every one of
+// them would touch far more code than it is worth.
+let ROUTE_PATH = DEFAULTS.routePath;
+let DEFAULT_TIMEOUT_MS = DEFAULTS.timeoutMs;
+let POLL_INTERVAL_MS = DEFAULTS.pollIntervalMs;
+let MAX_BODY_BYTES = DEFAULTS.maxBodyBytes;
 let TRASH_ROOT = "";
 
 function readBody(req) {
@@ -287,15 +295,16 @@ function listTrash() {
 }
 
 export function apply(ctx, config = {}) {
-  // Seed the module-level settings. Cordis validates the row against Config and
-  // passes the resolved object in as the second argument, so every value here is
-  // already defaulted — the fallbacks below only guard against a caller that
-  // mounts the plugin by hand without going through the loader.
-  ROUTE_PATH = String(config.routePath || ROUTE_PATH);
-  DEFAULT_TIMEOUT_MS = Number(config.timeoutMs) > 0 ? Number(config.timeoutMs) : DEFAULT_TIMEOUT_MS;
-  POLL_INTERVAL_MS = Number(config.pollIntervalMs) > 0 ? Number(config.pollIntervalMs) : POLL_INTERVAL_MS;
-  MAX_BODY_BYTES = Number(config.maxBodyBytes) > 0 ? Number(config.maxBodyBytes) : MAX_BODY_BYTES;
-  TRASH_ROOT = String(config.trashDir || "").trim() || join(DSH_HOME, "deleted-sessions");
+  // Settings come from the row's `config:` block. Fall back to ctx.config for a
+  // loader that hands the resolved config on the context instead, then to the
+  // defaults, so mounting with nothing at all still works.
+  const settings = { ...DEFAULTS, ...(config ?? {}), ...(ctx?.config ?? {}) };
+
+  ROUTE_PATH = String(settings.routePath || DEFAULTS.routePath);
+  DEFAULT_TIMEOUT_MS = Number(settings.timeoutMs) > 0 ? Number(settings.timeoutMs) : DEFAULTS.timeoutMs;
+  POLL_INTERVAL_MS = Number(settings.pollIntervalMs) > 0 ? Number(settings.pollIntervalMs) : DEFAULTS.pollIntervalMs;
+  MAX_BODY_BYTES = Number(settings.maxBodyBytes) > 0 ? Number(settings.maxBodyBytes) : DEFAULTS.maxBodyBytes;
+  TRASH_ROOT = String(settings.trashDir || "").trim() || join(DSH_HOME, "deleted-sessions");
 
   const disposers = [];
 

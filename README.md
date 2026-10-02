@@ -93,6 +93,8 @@
 | `maxBodyBytes` | `1048576` | 请求体上限 |
 | `trashDir` | 空 | 回收站位置；空 = `<dsh 家目录>/deleted-sessions` |
 
+**这个插件没有任何 npm 依赖**，只用 Node 内置模块。这是刻意的：用 `file://` 从磁盘直挂时没有 `node_modules`，一旦 import 了第三方包（比如 `@deepseek-ai/schemastery`），加载会失败，**而且失败时整条手机链路一起失效**。所以配置不走 schema 校验，而是直接取 `apply()` 的第二个参数，留空就用上面的默认值。
+
 ## 安全
 
 **这个插件能把你的电脑交给聊天窗口那一端。** 请务必：
