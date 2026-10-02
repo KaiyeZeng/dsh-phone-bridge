@@ -496,7 +496,7 @@ async function showStatus() {
 
   const runningCount = Number(result.runningCount ?? 0);
   if (runningCount > 1) lines.push("", `另有 ${runningCount - 1} 个会话也在跑任务。`);
-  lines.push("", "/stop 停下当前任务；/model 看可用模型。");
+  lines.push("", "/kill 停下当前任务；/model 看可用模型。");
   return lines.join("\n");
 }
 
@@ -707,8 +707,10 @@ function helpText() {
     "  /status             当前会话状态、工作目录与活跃时间",
     "",
     "运行控制",
-    "  /stop               停下当前会话正在跑的任务",
+    "  /kill               停下当前会话正在跑的任务",
     "  /model [序号]       查看或切换当前会话用的模型",
+    "  注意：/stop 是 OpenClaw 自己的中断，只会掐断它的回复，",
+    "  不会停 DSH 里的任务。要停 DSH 的任务用 /kill。",
     "",
     "删除与回收站",
     "  /del <序号>         删除会话，移进回收站可恢复",
@@ -787,7 +789,13 @@ const plugin = {
           return { handled: true, text: await showStatus() };
         }
 
-        if (text === "/stop") {
+        // Deliberately not /stop: OpenClaw claims that one before any plugin
+        // hook runs. Its ABORT_TRIGGERS set matches /stop plus stop, halt,
+        // abort, interrupt, exit, esc, 停止, 暂停 and more, and it aborts the
+        // OpenClaw reply rather than the DSH session, so a DSH turn would keep
+        // running while the phone said it had stopped. /kill is not in that
+        // set.
+        if (text === "/kill") {
           return { handled: true, text: await stopSession() };
         }
 
