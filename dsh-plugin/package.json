@@ -1,5 +1,5 @@
 {
-  "name": "dsh-wechat-bridge",
+  "name": "dsh-phone-bridge",
   "version": "0.2.8",
   "description": "Drive an existing DSH desktop session from a chat app, plus a sidebar delete button and trash panel",
   "type": "module",

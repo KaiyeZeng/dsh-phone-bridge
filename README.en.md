@@ -1,4 +1,4 @@
-# dsh-wechat-bridge
+# dsh-phone-bridge
 
 **Pick up the DSH session you are already running on your desktop, from your phone.**
 
@@ -117,7 +117,7 @@ Two sides, **one command each**.
 **DSH side:**
 
 ```
-dsh plugin --profile <your profile> add dsh-wechat-bridge
+dsh plugin --profile <your profile> add dsh-phone-bridge
 ```
 
 `<your profile>` is usually `desktop`. **Restart DSH afterwards** - the client
@@ -136,7 +136,7 @@ has to be edited by hand.**
 **OpenClaw side:**
 
 ```
-openclaw plugins install openclaw-dsh-wechat-bridge --force --accept-capabilities
+openclaw plugins install openclaw-dsh-bridge --force --accept-capabilities
 ```
 
 Both flags are required; without either one the install fails. Then allow and

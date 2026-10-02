@@ -1,5 +1,5 @@
 {
-  "name": "openclaw-dsh-wechat-bridge",
+  "name": "openclaw-dsh-bridge",
   "version": "0.2.9",
   "description": "Drive an existing DeepSeek Harness desktop session from WeChat, Telegram or Yuanbao",
   "type": "module",
@@ -22,10 +22,10 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/KaiyeZeng/dsh-wechat-bridge.git",
+    "url": "git+https://github.com/KaiyeZeng/dsh-phone-bridge.git",
     "directory": "openclaw-plugin"
   },
-  "homepage": "https://github.com/KaiyeZeng/dsh-wechat-bridge",
+  "homepage": "https://github.com/KaiyeZeng/dsh-phone-bridge",
   "peerDependencies": {
     "openclaw": ">=2026.9.5"
   },

@@ -10,7 +10,7 @@ function Report($label, $good, $detail) {
 }
 
 Write-Host ""
-Write-Host "dsh-wechat-bridge 自检" -ForegroundColor Cyan
+Write-Host "dsh-phone-bridge 自检" -ForegroundColor Cyan
 Write-Host ("=" * 50)
 
 # 1. DSH 进程
@@ -58,16 +58,16 @@ if ($hc -eq '200') {
   $hj = $hb | ConvertFrom-Json
   Report "sessionController 方法齐全" ($hj.missing.Count -eq 0) $(if ($hj.missing.Count -eq 0) { $hj.required.Count.ToString() + " 个都在" } else { "缺: " + ($hj.missing -join ', ') })
 } else {
-  Report "DSH 侧 /phone-bridge/health" $false ("HTTP " + $hc + "  <- 404 说明 DSH 侧插件版本旧，跑 dsh plugin --profile desktop add dsh-wechat-bridge 更新")
+  Report "DSH 侧 /phone-bridge/health" $false ("HTTP " + $hc + "  <- 404 说明 DSH 侧插件版本旧，跑 dsh plugin --profile desktop add dsh-phone-bridge 更新")
 }
 
 # 9. OpenClaw 侧插件在不在（npm 安装版 或 扩展目录版，有一种即可）
 $ocHome = Join-Path $env:USERPROFILE '.openclaw'
 # OpenClaw 每次更新会装到一个新目录，名字形如
-# openclaw-dsh-wechat-bridge__openclaw-generation__g-xxxx，所以按前缀匹配。
+# openclaw-dsh-bridge__openclaw-generation__g-xxxx，所以按前缀匹配。
 # 用精确名字的话，装好了也会被判成没装。
 $npmDirs = @(Get-ChildItem (Join-Path $ocHome 'npm\projects') -Directory -ErrorAction SilentlyContinue |
-  Where-Object { $_.Name -like 'openclaw-dsh-wechat-bridge*' })
+  Where-Object { $_.Name -like 'openclaw-dsh-bridge*' })
 $extVer = Test-Path (Join-Path $ocHome 'extensions\dsh-bridge')
 Report "OpenClaw 侧插件" ($npmDirs.Count -gt 0 -or $extVer) $(if ($npmDirs.Count -gt 0) { "npm 安装版，共 " + $npmDirs.Count + " 个目录" } elseif ($extVer) { "扩展目录版" } else { "都没找到" })
 

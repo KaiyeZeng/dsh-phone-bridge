@@ -9,7 +9,7 @@
 ### 1. 一行命令装
 
 ```
-dsh plugin --profile desktop add dsh-wechat-bridge
+dsh plugin --profile desktop add dsh-phone-bridge
 ```
 
 `desktop` 换成你的 profile 名（桌面版就是 `desktop`）。
@@ -34,10 +34,10 @@ dsh plugin --profile desktop list
 notepad C:\Users\曾楷烨\.dsh\profiles\desktop\package.json
 ```
 
-把 `dependencies` 里 `dsh-wechat-bridge` 的值改成你要的版本（例如 `^0.3.0`），保存后重跑：
+把 `dependencies` 里 `dsh-phone-bridge` 的值改成你要的版本（例如 `^0.3.0`），保存后重跑：
 
 ```powershell
-dsh plugin --profile desktop add dsh-wechat-bridge
+dsh plugin --profile desktop add dsh-phone-bridge
 ```
 
 ### 两个会让你误判的坑
@@ -59,7 +59,7 @@ The lockfile contains entries that the active policies reject.
 上面那条策略警告会让命令以 exit 1 结束，但包**可能已经装好了**。别只看退出码，去核对实际装了什么：
 
 ```powershell
-(Get-Content "$env:USERPROFILE\.dsh\profiles\desktop\node_modules\dsh-wechat-bridge\package.json" -Raw | ConvertFrom-Json).version
+(Get-Content "$env:USERPROFILE\.dsh\profiles\desktop\node_modules\dsh-phone-bridge\package.json" -Raw | ConvertFrom-Json).version
 ```
 
 ### 2. 重启 DSH
@@ -82,7 +82,7 @@ The lockfile contains entries that the active policies reject.
 
 ```yaml
 - insert:
-    - id: dsh-wechat-bridge
+    - id: dsh-phone-bridge
       name: "file:///<那个目录的绝对路径>/dsh-plugin/index.js"
       config:
         routePath: /phone-bridge
@@ -111,7 +111,7 @@ The lockfile contains entries that the active policies reject.
 ### 1. 一行命令装
 
 ```powershell
-openclaw plugins install openclaw-dsh-wechat-bridge --force --accept-capabilities
+openclaw plugins install openclaw-dsh-bridge --force --accept-capabilities
 ```
 
 **两个参数都是必须的，缺一个就装不上**，而且报错不会明说少了哪个：
@@ -316,7 +316,7 @@ Get-ScheduledTask -TaskName "*OpenClaw*" | Select-Object TaskName, State
 ```powershell
 npm i -g clawhub
 clawhub login
-cd C:\Users\曾楷烨\Documents\deepseek-harness\default-workspace\dsh-wechat-bridge
+cd C:\Users\曾楷烨\Documents\deepseek-harness\default-workspace\dsh-phone-bridge
 clawhub package validate ./openclaw-plugin
 ```
 
@@ -326,9 +326,9 @@ clawhub package validate ./openclaw-plugin
 
 ```powershell
 npm pack ./openclaw-plugin --pack-destination .\tmp
-clawhub package publish .\tmp\openclaw-dsh-wechat-bridge-0.2.9.tgz `
+clawhub package publish .\tmp\openclaw-dsh-bridge-0.2.9.tgz `
   --family code-plugin `
-  --source-repo https://github.com/KaiyeZeng/dsh-wechat-bridge `
+  --source-repo https://github.com/KaiyeZeng/dsh-phone-bridge `
   --source-path openclaw-plugin `
   --source-commit (git rev-parse HEAD) `
   --categories channels `
@@ -341,11 +341,11 @@ clawhub package publish .\tmp\openclaw-dsh-wechat-bridge-0.2.9.tgz `
 
 | 版本 | 时间 | 状态 |
 |---|---|---|
-| 0.2.9 | 2026-10-02 | 已提交，安全扫描中，用 `clawhub package moderation-status openclaw-dsh-wechat-bridge` 查看 |
+| 0.2.9 | 2026-10-02 | 已提交，安全扫描中，用 `clawhub package moderation-status openclaw-dsh-bridge` 查看 |
 
 ### 几个要留意的
 
-- **包名与 owner 的 scope 必须匹配**。我们的包名是无 scope 的 `openclaw-dsh-wechat-bridge`，按你的账号发布即可；如果哪天改成 `@someone/xxx`，那 scope 必须等于发布 owner。
+- **包名与 owner 的 scope 必须匹配**。我们的包名是无 scope 的 `openclaw-dsh-bridge`，按你的账号发布即可；如果哪天改成 `@someone/xxx`，那 scope 必须等于发布 owner。
 - **插件 id 在同一发布者下要唯一**。我们的是 `dsh-bridge`。
 - **分类要显式填对**。清单里写 `categories` 会压过 ClawHub 的自动分类。我们的定位是 `channels`（已有 OpenClaw channel 插件在用这个）。填 `other` 等于发到没人浏览的角落。
 - **新版本先进安全检查**，检查通过前不会出现在公开安装入口，`package inspect` 这时会说找不到，这是正常的。

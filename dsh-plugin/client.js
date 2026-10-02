@@ -1,4 +1,4 @@
-// Client half of the dsh-wechat-bridge package.
+// Client half of the dsh-phone-bridge package.
 //
 // This file is the built client artifact. DSH's client-modules scanner expects
 // exports["./client"] to contain a `window.__ModuleLoader__.load({...})` bundle
@@ -21,7 +21,7 @@
 // self-contained and needs no other plugin installed.
 
 window.__ModuleLoader__.load({
-	id: "dsh-wechat-bridge",
+	id: "dsh-phone-bridge",
 	factory: (require) => {
 		var module = { exports: {} };
 		var exports = module.exports;
@@ -31,7 +31,7 @@ window.__ModuleLoader__.load({
 		const FOOTER_SLOT = "sidebar.footer.action";
 		const OVERLAY_SLOT = "shell.overlay";
 		const API = "/phone-bridge";
-		const STYLE_ID = "dsh-wechat-bridge-style";
+		const STYLE_ID = "dsh-phone-bridge-style";
 
 		// The client root context, kept so React components (which do not receive
 		// it as a prop) can reach client services such as `sessions`.

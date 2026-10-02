@@ -1,4 +1,4 @@
-# dsh-wechat-bridge
+# dsh-phone-bridge
 
 **用手机接着你电脑上正在聊的那个 DSH 会话。**
 
@@ -89,7 +89,7 @@
 **DSH 侧：**
 
 ```
-dsh plugin --profile <你的 profile> add dsh-wechat-bridge
+dsh plugin --profile <你的 profile> add dsh-phone-bridge
 ```
 
 `<你的 profile>` 通常是 `desktop`。装完**重启 DSH**——client 半边在启动时扫描，配置热重载对它无效。
@@ -101,7 +101,7 @@ dsh plugin --profile <你的 profile> add dsh-wechat-bridge
 **OpenClaw 侧：**
 
 ```
-openclaw plugins install openclaw-dsh-wechat-bridge --force --accept-capabilities
+openclaw plugins install openclaw-dsh-bridge --force --accept-capabilities
 ```
 
 两个参数都得带，缺一个装不上。装完在 `openclaw.json` 里放行并配置（见下一节）。完整步骤见 [docs/installation.md](docs/installation.md)。
