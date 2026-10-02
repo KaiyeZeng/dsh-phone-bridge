@@ -722,6 +722,145 @@ export function apply(ctx, config = {}) {
     },
   }));
 
+  // What is the session doing right now. Everything here comes from list(),
+  // which is cheap and does not activate a cold session - asking for status
+  // should never wake one up.
+  disposers.push(ctx.webServer.register({
+    kind: "exact",
+    path: `${ROUTE_PATH}/status`,
+    handler: async (req, res) => {
+      try {
+        const url = new URL(req.url ?? "/", "http://127.0.0.1");
+        const sessionId = (url.searchParams.get("sessionId") ?? "").trim();
+        const sessionController = ctx.get("sessionController");
+        if (!sessionController) throw new Error("sessionController is unavailable");
+        const signal = new AbortController().signal;
+        const listing = await sessionController.list({}, signal);
+        const items = listing?.items ?? [];
+        const running = items.filter((item) => item.running);
+
+        let detail = null;
+        if (sessionId) {
+          const found = items.find((item) => item.sessionId === sessionId);
+          detail = {
+            sessionId,
+            known: Boolean(found),
+            running: Boolean(found?.running),
+            blank: Boolean(found?.blank),
+            cwd: found?.cwd ?? "",
+            updatedAt: found?.updatedAt ?? null,
+            projections: found?.projections?.values ?? null,
+          };
+        }
+
+        sendJson(res, 200, {
+          ok: true,
+          runningCount: running.length,
+          runningIds: running.map((item) => item.sessionId),
+          detail,
+        });
+      } catch (error) {
+        sendJson(res, 500, { ok: false, error: String(error?.message ?? error) });
+      }
+    },
+  }));
+
+  // Stop whatever the session is doing. cancel() takes { kind } internally and
+  // keeps the inbox, so the user's queued messages are not silently dropped.
+  disposers.push(ctx.webServer.register({
+    kind: "exact",
+    path: `${ROUTE_PATH}/stop`,
+    handler: async (req, res) => {
+      try {
+        if (req.method !== "POST") {
+          sendJson(res, 405, { ok: false, error: "POST only" });
+          return;
+        }
+        const raw = await readBody(req);
+        let payload;
+        try {
+          payload = JSON.parse(raw || "{}");
+        } catch {
+          sendJson(res, 400, { ok: false, error: "invalid json" });
+          return;
+        }
+        const sessionId = String(payload.sessionId ?? "").trim();
+        if (!sessionId) {
+          sendJson(res, 400, { ok: false, error: "sessionId is required" });
+          return;
+        }
+        const sessionController = ctx.get("sessionController");
+        if (!sessionController) throw new Error("sessionController is unavailable");
+        if (typeof sessionController.cancel !== "function") {
+          throw new Error("this DSH build does not expose cancel");
+        }
+        const result = await sessionController.cancel({ sessionId });
+        sendJson(res, 200, { ok: true, accepted: result?.accepted !== false });
+      } catch (error) {
+        sendJson(res, 500, { ok: false, error: String(error?.message ?? error) });
+      }
+    },
+  }));
+
+  // The model catalog is a deployment-wide read, so the phone can fetch it once
+  // and then switch models by index without carrying provider ids around.
+  disposers.push(ctx.webServer.register({
+    kind: "exact",
+    path: `${ROUTE_PATH}/models`,
+    handler: async (_req, res) => {
+      try {
+        const sessionController = ctx.get("sessionController");
+        if (!sessionController) throw new Error("sessionController is unavailable");
+        if (typeof sessionController.modelCatalog !== "function") {
+          throw new Error("this DSH build does not expose modelCatalog");
+        }
+        sendJson(res, 200, { ok: true, catalog: (await sessionController.modelCatalog()) ?? null });
+      } catch (error) {
+        sendJson(res, 500, { ok: false, error: String(error?.message ?? error) });
+      }
+    },
+  }));
+
+  // Switch the model a session uses. selectModel() resumes the session, so this
+  // is the one route here with a deliberate side effect.
+  disposers.push(ctx.webServer.register({
+    kind: "exact",
+    path: `${ROUTE_PATH}/model`,
+    handler: async (req, res) => {
+      try {
+        if (req.method !== "POST") {
+          sendJson(res, 405, { ok: false, error: "POST only" });
+          return;
+        }
+        const raw = await readBody(req);
+        let payload;
+        try {
+          payload = JSON.parse(raw || "{}");
+        } catch {
+          sendJson(res, 400, { ok: false, error: "invalid json" });
+          return;
+        }
+        const sessionId = String(payload.sessionId ?? "").trim();
+        const provider = String(payload.provider ?? "").trim();
+        const model = String(payload.model ?? "").trim();
+        if (!sessionId || !provider || !model) {
+          sendJson(res, 400, { ok: false, error: "sessionId, provider and model are required" });
+          return;
+        }
+        const sessionController = ctx.get("sessionController");
+        if (!sessionController) throw new Error("sessionController is unavailable");
+        if (typeof sessionController.selectModel !== "function") {
+          throw new Error("this DSH build does not expose selectModel");
+        }
+        const request = { sessionId, provider, model };
+        if (payload.reasoningEffort) request.reasoningEffort = payload.reasoningEffort;
+        sendJson(res, 200, { ok: true, selection: (await sessionController.selectModel(request)) ?? null });
+      } catch (error) {
+        sendJson(res, 500, { ok: false, error: String(error?.message ?? error) });
+      }
+    },
+  }));
+
   disposers.push(ctx.webServer.register({
     kind: "exact",
     path: ROUTE_PATH,

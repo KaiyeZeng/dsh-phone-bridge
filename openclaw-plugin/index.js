@@ -468,6 +468,145 @@ async function restoreFromTrash(reference) {
   return `已恢复：${result.sessionId ?? entry.name}\n它回到了原来的工作目录，桌面侧边栏里应该就能看到了。`;
 }
 
+// How the current session is doing. One round trip, since the phone is often on
+// a slow link and status is the command you fire when something feels stuck.
+async function showStatus() {
+  const current = readState().sessionId ?? "";
+  const query = current ? `?sessionId=${encodeURIComponent(current)}` : "";
+  const result = await httpJson("GET", `${BRIDGE_URL}/status${query}`);
+  if (!result.ok) return `读取状态失败：${result.error}`;
+
+  const lines = [];
+  const detail = result.detail;
+  if (!current) {
+    lines.push("还没指定会话。发 /list 看列表后用 /use <序号>，或者 /new 开一个。");
+  } else if (!detail?.known) {
+    lines.push(`当前指向 ${shortId(current)}，但它已不在会话列表里（可能被删了）。`);
+    lines.push("发 /list 重新指定。");
+  } else {
+    const title = titleOf({ projections: detail.projections }) || "(无标题)";
+    const flags = [detail.running ? "正在跑任务" : "空闲", detail.blank ? "空会话" : ""]
+      .filter(Boolean)
+      .join("，");
+    lines.push(`当前会话：${title}  [${shortId(current)}]`);
+    lines.push(`状态：${flags}`);
+    if (detail.cwd) lines.push(`工作目录：${detail.cwd}`);
+    if (detail.updatedAt) lines.push(`最近活动：${formatAge(detail.updatedAt)}`);
+  }
+
+  const runningCount = Number(result.runningCount ?? 0);
+  if (runningCount > 1) lines.push("", `另有 ${runningCount - 1} 个会话也在跑任务。`);
+  lines.push("", "/stop 停下当前任务；/model 看可用模型。");
+  return lines.join("\n");
+}
+
+// Stop whatever the current session is running. The bridge cancels with
+// keepInbox, so messages you already sent are not thrown away with the turn.
+async function stopSession() {
+  const current = readState().sessionId ?? "";
+  if (!current) return "还没指定会话。发 /list 看列表后用 /use <序号>。";
+
+  const result = await httpJson("POST", `${BRIDGE_URL}/stop`, { sessionId: current });
+  if (!result.ok) return `停止失败：${result.error}`;
+  note(`stopped ${current}`);
+  return `已请求停下 ${shortId(current)} 正在跑的任务。\n已经排队发出去的消息还在，它会接着处理。`;
+}
+
+// The catalog's shape is not a stable surface, so walk it and keep anything
+// carrying a model id rather than assuming a layout. A shape change then means
+// a shorter list, not a crash.
+function flattenCatalog(catalog) {
+  const found = [];
+  const seen = new Set();
+  const visit = (node, depth) => {
+    if (!node || depth > 5) return;
+    if (Array.isArray(node)) {
+      for (const item of node) visit(item, depth + 1);
+      return;
+    }
+    if (typeof node !== "object") return;
+
+    const model = [node.model, node.modelId, node.id]
+      .find((value) => typeof value === "string" && value.trim());
+    if (model) {
+      const provider = [node.provider, node.providerId, node.providerKey]
+        .find((value) => typeof value === "string" && value.trim()) ?? "";
+      const label = [node.label, node.displayName, node.name]
+        .find((value) => typeof value === "string" && value.trim()) ?? model;
+      const key = `${provider}|${model}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        found.push({ provider, model, label });
+      }
+    }
+    for (const value of Object.values(node)) visit(value, depth + 1);
+  };
+  visit(catalog, 0);
+  return found;
+}
+
+// Remember the last listing so /model <序号> can refer to a row.
+async function showModels() {
+  const result = await httpJson("GET", `${BRIDGE_URL}/models`);
+  if (!result.ok) return `读取模型列表失败：${result.error}`;
+
+  const models = flattenCatalog(result.catalog);
+  if (!models.length) return "DSH 没有返回可用的模型列表。";
+
+  const state = readState();
+  state.lastModels = models;
+  writeState(state);
+
+  const lines = models.slice(0, PAGE_SIZE).map((entry, index) =>
+    `${index + 1}. ${entry.provider ? `${entry.provider} / ` : ""}${entry.label}`,
+  );
+  const more = models.length > PAGE_SIZE ? [`（只显示前 ${PAGE_SIZE} 个）`] : [];
+  return [
+    `可用模型：${models.length} 个`,
+    ...lines,
+    ...more,
+    "",
+    "/model <序号> 切换当前会话用的模型。",
+  ].join("\n");
+}
+
+async function switchModel(reference) {
+  const wanted = String(reference ?? "").trim();
+  if (!wanted) return showModels();
+
+  const current = readState().sessionId ?? "";
+  if (!current) return "还没指定会话。发 /list 看列表后用 /use <序号>，再切模型。";
+
+  const state = readState();
+  const list = Array.isArray(state.lastModels) ? state.lastModels : [];
+  let picked = null;
+  if (/^\d+$/.test(wanted)) {
+    picked = list[Number(wanted) - 1] ?? null;
+    if (!picked) return `没有第 ${wanted} 个模型。先发 /model 看列表。`;
+  } else {
+    // Exact id first, then a case-insensitive substring so a typed name does not
+    // have to match the full id.
+    const lower = wanted.toLowerCase();
+    picked = list.find((entry) => entry.model === wanted)
+      ?? list.find((entry) => String(entry.model).toLowerCase().includes(lower))
+      ?? null;
+    if (!picked) return `没找到「${wanted}」。先发 /model 看列表。`;
+  }
+
+  if (!picked.provider) {
+    return `「${picked.label}」没有提供者信息，切不了。用 /model 看列表里的序号再试。`;
+  }
+
+  const result = await httpJson("POST", `${BRIDGE_URL}/model`, {
+    sessionId: current,
+    provider: picked.provider,
+    model: picked.model,
+  });
+  if (!result.ok) return `切换失败：${result.error}`;
+  note(`model ${picked.provider}/${picked.model}`);
+  return `已把 ${shortId(current)} 切到 ${picked.provider} / ${picked.label}。\n下一条消息就会用新模型。`;
+}
+
 function resolveTarget(reference) {
   const state = readState();
   const wanted = String(reference ?? "").trim();
@@ -527,6 +666,11 @@ function helpText() {
     "  /use <序号>         指定目标会话",
     "  /where              查看当前会话、工作目录与活跃时间",
     "  /name <标题>        给当前会话命名（电脑端同步显示）",
+    "  /status             当前会话状态、工作目录与活跃时间",
+    "",
+    "运行控制",
+    "  /stop               停下当前会话正在跑的任务",
+    "  /model [序号]       查看或切换当前会话用的模型",
     "",
     "删除与回收站",
     "  /del <序号>         删除会话，移进回收站可恢复",
@@ -599,6 +743,18 @@ const plugin = {
 
         if (text === "/restore" || text.startsWith("/restore ")) {
           return { handled: true, text: await restoreFromTrash(text.slice(8)) };
+        }
+
+        if (text === "/status") {
+          return { handled: true, text: await showStatus() };
+        }
+
+        if (text === "/stop") {
+          return { handled: true, text: await stopSession() };
+        }
+
+        if (text === "/model" || text.startsWith("/model ")) {
+          return { handled: true, text: await switchModel(text.slice(6)) };
         }
 
         if (text === "/purge!") {

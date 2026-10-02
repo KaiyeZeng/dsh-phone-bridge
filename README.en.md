@@ -59,8 +59,11 @@ the desktop process puts the real `sessionController` within reach.
 - `/find <word>` — search titles; `/find-any <word>` searches message bodies too
 - `/new` — create a session
 - `/name <title>` — rename
+- `/status` — state of the current session, its working directory, last activity
+- `/stop` — stop the running turn (queued messages are kept)
+- `/model [n]` — list models, or switch to the nth one
 - `/del <n>` — delete (moves to trash, recoverable)
-- `/trash` — inspect the trash; `/purge` removes for good
+- `/trash` — inspect the trash; `/restore <n>` puts one back; `/purge` removes for good
 - `/help` — everything
 
 **Both directions**
