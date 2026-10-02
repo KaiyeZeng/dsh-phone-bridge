@@ -318,14 +318,36 @@ npm i -g clawhub
 clawhub login
 cd C:\Users\曾楷烨\Documents\deepseek-harness\default-workspace\dsh-phone-bridge
 clawhub package validate ./openclaw-plugin
-clawhub package publish ./openclaw-plugin --dry-run
-clawhub package publish ./openclaw-plugin
 ```
+
+**在 Windows 上不要直接 `clawhub package publish ./openclaw-plugin`，会失败。** `clawhub` 内部用 `spawnSync("npm", ["pack", ...])` 打包，而 Windows 上的 npm 是 `npm.cmd`，Node 不解析 PATHEXT 就找不到它，报出来是 `Error: spawnSync npm ENOENT`——看起来像 npm 没装，其实装了。
+
+绕法是**自己打包，再把 `.tgz` 交给它**：`clawhub` 的源允许直接是一个 tarball，那条路径完全不碰 npm。
+
+```powershell
+npm pack ./openclaw-plugin --pack-destination .\tmp
+clawhub package publish .\tmp\openclaw-dsh-bridge-0.2.9.tgz `
+  --family code-plugin `
+  --source-repo https://github.com/KaiyeZeng/dsh-phone-bridge `
+  --source-path openclaw-plugin `
+  --source-commit (git rev-parse HEAD) `
+  --categories channels `
+  --topics "wechat,deepseek-harness,remote-control,mobile,phone"
+```
+
+先加 `--dry-run` 看一遍再正式发。`--source-commit` 传确切 commit，ClawHub 会记成 source-linked。
+
+### 已发布记录
+
+| 版本 | 时间 | 状态 |
+|---|---|---|
+| 0.2.9 | 2026-10-02 | 已提交，安全扫描中，用 `clawhub package moderation-status openclaw-dsh-bridge` 查看 |
 
 ### 几个要留意的
 
 - **包名与 owner 的 scope 必须匹配**。我们的包名是无 scope 的 `openclaw-dsh-bridge`，按你的账号发布即可；如果哪天改成 `@someone/xxx`，那 scope 必须等于发布 owner。
 - **插件 id 在同一发布者下要唯一**。我们的是 `dsh-bridge`。
-- **新版本先进安全检查**，检查通过前不会出现在公开安装入口。
+- **分类要显式填对**。清单里写 `categories` 会压过 ClawHub 的自动分类。我们的定位是 `channels`（已有 OpenClaw channel 插件在用这个）。填 `other` 等于发到没人浏览的角落。
+- **新版本先进安全检查**，检查通过前不会出现在公开安装入口，`package inspect` 这时会说找不到，这是正常的。
 - 之后可以配 **OIDC 免密钥发布**（`clawhub package trusted-publisher set`）：先手工发一次建立包记录，然后把仓库和 workflow 文件名登记进去，CI 就能不发 token 直接发版。
 - 同一安装里，**一个 runtime id 只能有一个插件生效**。
