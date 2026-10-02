@@ -78,12 +78,15 @@ function writeState(state) {
   }
 }
 
-async function httpJson(method, url, body) {
+async function httpJson(method, url, body, timeoutMs) {
   try {
     const response = await fetch(url, {
       method,
       headers: body ? { "content-type": "application/json; charset=utf-8" } : undefined,
       body: body ? JSON.stringify(body) : undefined,
+      // Only set when the caller asked for it. The bridge's own calls want to
+      // wait a turn out, so a default timeout here would break them.
+      ...(timeoutMs ? { signal: AbortSignal.timeout(timeoutMs) } : {}),
     });
     const text = await response.text();
     try {
@@ -681,6 +684,33 @@ function resolveTarget(reference) {
   return wanted.length >= 8 ? wanted : null;
 }
 
+// Whether the target session is mid-turn, and how we know, so the log says which
+// source fired.
+//
+// The status read is capped at four seconds on purpose: if DSH does not answer
+// promptly the message is forwarded and things behave as they did before, rather
+// than holding the user's message hostage to a slow read.
+async function sessionBusy(sessionId) {
+  if (forwarding && forwarding.sessionId === sessionId) {
+    return {
+      from: "bridge",
+      seconds: Math.max(1, Math.round((Date.now() - forwarding.startedAt) / 1000)),
+    };
+  }
+  const status = await httpJson(
+    "GET",
+    `${BRIDGE_URL}/status?sessionId=${encodeURIComponent(sessionId)}`,
+    undefined,
+    4000,
+  );
+  if (status?.ok && status.detail?.running) {
+    // DSH says it is running but not since when. No number, rather than one
+    // derived from the last-activity timestamp and quietly wrong.
+    return { from: "dsession", seconds: null };
+  }
+  return null;
+}
+
 async function askSession(sessionId, text) {
   const result = await httpJson("POST", BRIDGE_URL, { text, sessionId, timeoutMs: TURN_TIMEOUT_MS });
   if (result.ok) return result.reply ?? "（DSH 没有返回内容）";
@@ -1053,21 +1083,25 @@ const plugin = {
           };
         }
 
-        // A second message sent while the first is still being answered used to
-        // be forwarded too, and then sat in the queue while the desktop worked
-        // through the first turn. From the phone that is indistinguishable from a
-        // dead link: you send something and nothing comes back. Say so instead.
+        // A second message sent while the session is mid-turn used to be
+        // forwarded too, and then queued behind the desktop turn. From the phone
+        // that is indistinguishable from a dead link: you send something and
+        // nothing comes back.
         //
-        // The check is on our own bookkeeping, not on an HTTP call, so the notice
-        // is immediate even though the session is busy - which is exactly the
-        // situation where a round trip to DSH would stall.
-        if (forwarding && forwarding.sessionId === target) {
-          const seconds = Math.max(1, Math.round((Date.now() - forwarding.startedAt) / 1000));
-          note(`busy notice ${shortId(target)} after ${seconds}s`);
+        // Two sources are needed, because either alone misses a real case:
+        //   - our own bookkeeping catches a forward of ours still waiting
+        //   - DSH's own running flag catches a turn started somewhere else, such
+        //     as from the desktop window, which the bridge never saw
+        // The first live test only had the first source and failed for exactly
+        // that reason: the task had been started from the desktop.
+        const busy = await sessionBusy(target);
+        if (busy) {
+          const when = busy.seconds === null ? "" : `（已经 ${busy.seconds} 秒）`;
+          note(`busy notice ${shortId(target)} via ${busy.from} after ${busy.seconds ?? "?"}s`);
           return {
             handled: true,
             text: [
-              `上一个任务还在跑（已经 ${seconds} 秒），这条我没有发出去。`,
+              `上一个任务还在跑${when}，这条我没有发出去。`,
               "",
               "等它跑完再发；要中断它，发 /kill。",
               "想看它在做什么，发 /status。",
