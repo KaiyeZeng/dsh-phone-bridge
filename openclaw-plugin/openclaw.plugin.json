@@ -2,7 +2,9 @@
   "id": "dsh-bridge",
   "name": "DSH Bridge",
   "description": "Drive an existing DeepSeek Harness desktop session from a chat app",
-  "categories": ["other"],
+  "categories": [
+    "channels"
+  ],
   "enabledByDefault": false,
   "activation": {
     "onStartup": true
@@ -17,7 +19,9 @@
       },
       "allowedSenders": {
         "type": "array",
-        "items": { "type": "string" },
+        "items": {
+          "type": "string"
+        },
         "description": "Sender ids allowed to reach DeepSeek Harness. Empty means allow everyone, which is dangerous: this channel runs DSH with approvals disabled, so anyone who can message the bot could drive your machine."
       },
       "allowGroups": {
