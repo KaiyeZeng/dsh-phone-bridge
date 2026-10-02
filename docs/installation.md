@@ -40,6 +40,28 @@ notepad C:\Users\曾楷烨\.dsh\profiles\desktop\package.json
 dsh plugin --profile desktop add dsh-phone-bridge
 ```
 
+### 两个会让你误判的坑
+
+**一、刚发布的版本装不上，这是有意的。**
+
+DSH 的插件管理器带供应链策略：npm 上发布时间太短的包会被拒绝，报
+
+```
+The lockfile contains entries that the active policies reject.
+```
+
+这是防止刚被投毒的新版本立刻被装上，**不要绕过它**——加白名单或手改 lockfile 都是在拆掉一层保护。等它过一段时间再装就行。
+
+**想立刻测本地改动，走下面「本地开发」那条路**，那才是给开发用的。
+
+**二、`dsh plugin add` 会带着非零退出码成功。**
+
+上面那条策略警告会让命令以 exit 1 结束，但包**可能已经装好了**。别只看退出码，去核对实际装了什么：
+
+```powershell
+(Get-Content "$env:USERPROFILE\.dsh\profiles\desktop\node_modules\dsh-phone-bridge\package.json" -Raw | ConvertFrom-Json).version
+```
+
 ### 2. 重启 DSH
 
 配置热重载对**新增插件**不生效（对已有插件的配置改动才生效）。**必须完整重启 DSH**，client 半边也只在启动时扫描。
