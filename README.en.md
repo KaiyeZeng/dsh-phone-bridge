@@ -71,14 +71,27 @@ the desktop process puts the real `sessionController` within reach.
 
 ## Install
 
-**Full steps in [docs/installation.md](docs/installation.md)** (which file to edit
-on each side, and what to put in it).
+Two sides. **The DSH side is one command**:
 
-Roughly three steps:
+```
+dsh plugin --profile <your profile> add dsh-phone-bridge
+```
 
-1. Install [OpenClaw](https://github.com/openclaw/openclaw) and connect a chat channel
-2. Drop `openclaw-plugin/` into OpenClaw's extensions directory and allow it in `openclaw.json`
-3. Mount `dsh-plugin/` into your DSH profile and restart DSH
+`<your profile>` is usually `desktop`. **Restart DSH afterwards** - the client
+half is scanned at startup and config hot-reload does not pick it up.
+
+The package **ships its own bundle declaration** (`dsh.bundle.patch` pointing at
+its bundled `cordis.patch.yml`), so `dsh plugin add` registers the host row into
+your profile and the client half follows automatically. **No configuration file
+has to be edited by hand.**
+
+**The OpenClaw side** still needs its extension directory set up manually
+(OpenClaw has its own extension mechanism). Full steps in
+[docs/installation.md](docs/installation.md).
+
+**For local development** you can skip npm and mount `dsh-plugin/` with a
+`file://` URL instead, which lets you edit code without reinstalling. Pick one
+of the two, not both.
 
 ## Configuration
 

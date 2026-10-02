@@ -6,45 +6,65 @@
 
 ## 一、DSH 侧
 
-### 1. 放文件
-
-把 `dsh-plugin/` 这个目录复制到一个不会被 DSH 升级覆盖的地方，比如：
+### 1. 一行命令装
 
 ```
-<你的目录>/dsh-plugin/
+dsh plugin --profile desktop add dsh-phone-bridge
 ```
 
-不要放进 DSH 的安装目录（升级会被清掉）。
+`desktop` 换成你的 profile 名（桌面版就是 `desktop`）。
 
-### 2. 挂进 profile
+这个包**自带 bundle 声明**（`package.json` 里的 `dsh.bundle.patch` 指向包内的 `cordis.patch.yml`），所以这条命令会把 host 半边注册进 profile，client 半边跟着自动挂上。**不需要手工改任何配置文件。**
 
-打开你的 profile 配置文件：
+装完检查一下：
+
+```
+dsh plugin --profile desktop list
+```
+
+包名出现在列表里就说明装上了。
+
+### 2. 重启 DSH
+
+配置热重载对**新增插件**不生效（对已有插件的配置改动才生效）。**必须完整重启 DSH**，client 半边也只在启动时扫描。
+
+---
+
+### 备选：本地开发用 `file://` 挂载
+
+改代码调试时，不走 npm，直接把 `dsh-plugin/` 挂进 profile，改完不用重装。
+
+把 `dsh-plugin/` 目录复制到一个不会被 DSH 升级覆盖的地方（不要放进 DSH 安装目录），然后编辑：
 
 ```
 <DSH 配置根>/profiles/<profile 名>/cordis.patch.yml
 ```
 
-`<DSH 配置根>` 默认是 `~/.dsh`，`<profile 名>` 通常是 `desktop`。
-
-在文件末尾加一段：
+在文件末尾加：
 
 ```yaml
 - insert:
     - id: dsh-phone-bridge
-      name: "file:///<上面那个目录的绝对路径>/dsh-plugin/index.js"
+      name: "file:///<那个目录的绝对路径>/dsh-plugin/index.js"
       config:
         routePath: /phone-bridge
 ```
 
 **三个容易踩的地方**：
 
-1. **`file://` 后面必须是绝对路径**，而且**不能写 `~`**——它不会展开。Windows 上写成 `file:///C:/path/to/dsh-plugin/index.js`（三个斜杠，路径里的反斜杠换成正斜杠）。
+1. **`file://` 后面必须是绝对路径**，而且**不能写 `~`**——它不会展开。Windows 上写成 `file:///C:/path/to/dsh-plugin/index.js`（三个斜杠，反斜杠换成正斜杠）。
 2. **指向 `index.js` 这个文件**，不是目录。
 3. **必须放在 `- insert:` 下面**。`cordis.patch.yml` 里裸写的 `- id:` 是**覆盖已有行**，不是新增；只有 `insert` 段里的才是新条目。放错地方不会报错，只会悄无声息地不生效。
 
-### 3. 重启 DSH
+**两种方式选一种，别同时用**——会装出两份同名插件。
 
-配置热重载对**新增插件**不生效（对已有插件的配置改动才生效）。**必须完整重启 DSH。**
+---
+
+### 关于配置项
+
+上面那行 `config:` 是可选的，全部字段都有默认值。改 `routePath` 要同步改 OpenClaw 侧的 `bridgeUrl`，两边必须一致。
+
+> **注意**：host 半边**没有声明 Config schema**，配置直接取 `apply()` 的第二个参数。这是刻意的——声明 schema 要 import `@deepseek-ai/schemastery`，而 `file://` 挂载没有 `node_modules`，那个 import 会失败、连累整条手机链路。所以配置不做校验，写错了也不会报错，只是不生效。
 
 ---
 
