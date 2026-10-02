@@ -63,9 +63,13 @@ if ($hc -eq '200') {
 
 # 9. OpenClaw 侧插件在不在（npm 安装版 或 扩展目录版，有一种即可）
 $ocHome = Join-Path $env:USERPROFILE '.openclaw'
-$npmVer = Test-Path (Join-Path $ocHome 'npm\projects\openclaw-dsh-bridge')
+# OpenClaw 每次更新会装到一个新目录，名字形如
+# openclaw-dsh-bridge__openclaw-generation__g-xxxx，所以按前缀匹配。
+# 用精确名字的话，装好了也会被判成没装。
+$npmDirs = @(Get-ChildItem (Join-Path $ocHome 'npm\projects') -Directory -ErrorAction SilentlyContinue |
+  Where-Object { $_.Name -like 'openclaw-dsh-bridge*' })
 $extVer = Test-Path (Join-Path $ocHome 'extensions\dsh-bridge')
-Report "OpenClaw 侧插件" ($npmVer -or $extVer) ("npm 安装版=" + $npmVer + "  扩展目录版=" + $extVer)
+Report "OpenClaw 侧插件" ($npmDirs.Count -gt 0 -or $extVer) $(if ($npmDirs.Count -gt 0) { "npm 安装版，共 " + $npmDirs.Count + " 个目录" } elseif ($extVer) { "扩展目录版" } else { "都没找到" })
 
 # 10. 重复副本会让同一条消息被转发两次
 $dupes = @(Get-ChildItem (Join-Path $ocHome 'extensions') -Directory -ErrorAction SilentlyContinue |
