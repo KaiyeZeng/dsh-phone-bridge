@@ -1,6 +1,6 @@
 {
   "name": "dsh-phone-bridge",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "description": "Drive an existing DSH desktop session from a chat app, plus a sidebar delete button and trash panel",
   "type": "module",
   "main": "index.js",

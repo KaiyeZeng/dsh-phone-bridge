@@ -943,29 +943,74 @@ export function apply(ctx, config = {}) {
         }
         const sessionController = ctx.get("sessionController");
         if (!sessionController) throw new Error("sessionController is unavailable");
-        if (typeof sessionController.page !== "function") {
-          throw new Error("this DSH build does not expose sessionController.page");
-        }
 
         const signal = new AbortController().signal;
-        // throughSeq: -1 means "the newest page"; maxMessages stays well above the
-        // requested count because assistant and tool events sit between the user's.
-        const page = await sessionController.page({
-          address: { kind: "session", sessionId },
-          throughSeq: -1,
-          maxMessages: 200,
-        }, signal);
+        const traces = {};
+
+        // Two ways in, tried in order.
+        //
+        // inspect() hands back the event list outright (SessionInspection.events),
+        // so it needs no cursor. page() does need one: throughSeq is an absolute
+        // sequence, and -1 is not "newest" but "nothing", since paginate starts at
+        // end = throughSeq + 1 = 0 and walks backwards from -1. That misreading is
+        // what made the first version answer ok with zero messages.
+        let events = [];
+        let used = null;
+
+        if (typeof sessionController.inspect === "function") {
+          try {
+            const inspection = await sessionController.inspect(sessionId, signal);
+            const list = Array.isArray(inspection?.events) ? inspection.events : [];
+            traces.inspect = {
+              eventCount: list.length,
+              firstSeq: list[0]?.seq ?? null,
+              lastSeq: list[list.length - 1]?.seq ?? null,
+            };
+            if (list.length) {
+              events = list;
+              used = "inspect";
+            }
+          } catch (error) {
+            traces.inspect = { error: String(error?.message ?? error) };
+          }
+        }
+
+        if (!events.length && typeof sessionController.page === "function") {
+          try {
+            // Page from whatever cursor inspect gave us, else from the very start.
+            const cursor = Number(traces.inspect?.lastSeq ?? 0);
+            const page = await sessionController.page({
+              address: { kind: "session", sessionId },
+              throughSeq: Number.isSafeInteger(cursor) && cursor >= 0 ? cursor : 0,
+              maxMessages: 400,
+            }, signal);
+            const list = (page?.records ?? []).map((record) => record?.event).filter(Boolean);
+            traces.page = {
+              cursor,
+              recordCount: list.length,
+              hasMore: page?.hasMore ?? null,
+              firstSeq: list[0]?.seq ?? null,
+              lastSeq: list[list.length - 1]?.seq ?? null,
+            };
+            if (list.length) {
+              events = list;
+              used = "page";
+            }
+          } catch (error) {
+            traces.page = { error: String(error?.message ?? error) };
+          }
+        }
 
         const texts = [];
-        const allRecords = page?.records ?? [];
         const typeTally = {};
         let firstUserEvent = null;
-        for (const record of allRecords) {
-          const event = record?.event;
+        let userEventCount = 0;
+        for (const event of events) {
           if (!event) continue;
           const key = event.type ?? "(none)";
           typeTally[key] = (typeTally[key] ?? 0) + 1;
           if (event.type !== "user/message") continue;
+          userEventCount += 1;
           if (!firstUserEvent) firstUserEvent = event;
           if (event?.data?.source?.kind !== "user") continue;
           const text = textFromContentBlocks(event.data.content);
@@ -976,6 +1021,7 @@ export function apply(ctx, config = {}) {
         const payload = {
           ok: true,
           sessionId,
+          source: used,
           total: texts.length,
           // Newest last, so the caller can slice from the end.
           messages: texts.slice(-limit),
@@ -986,12 +1032,13 @@ export function apply(ctx, config = {}) {
         // why is to look at what actually arrived. Loopback-only, and truncated.
         if ((url.searchParams.get("debug") ?? "") === "1") {
           payload.diagnostics = {
-            recordCount: allRecords.length,
-            hasMore: page?.hasMore ?? null,
-            recordKeys: allRecords[0] ? Object.keys(allRecords[0]) : [],
+            used,
+            eventCount: events.length,
+            userEventCount,
             eventTypes: typeTally,
-            firstRecordSample: allRecords[0] ? JSON.stringify(allRecords[0]).slice(0, 700) : null,
-            firstUserEventSample: firstUserEvent ? JSON.stringify(firstUserEvent).slice(0, 1400) : null,
+            traces,
+            firstEventKeys: events[0] ? Object.keys(events[0]) : [],
+            firstUserEventSample: firstUserEvent ? JSON.stringify(firstUserEvent).slice(0, 1500) : null,
           };
         }
 
