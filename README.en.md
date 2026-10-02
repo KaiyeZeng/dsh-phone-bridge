@@ -19,7 +19,7 @@ still that same thread.
 **This is its biggest advantage.** Other options hand you a new bot; this one lets
 you carry on your own thread.
 
-English | [中文](README.md)
+English | [中文](README.md)　·　[GitHub](https://github.com/KaiyeZeng/dsh-phone-bridge)　·　[Gitee mirror](https://gitee.com/zeng-kaiye103/dsh-phone-bridge)
 
 ---
 

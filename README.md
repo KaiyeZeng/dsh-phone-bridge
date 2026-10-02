@@ -10,7 +10,7 @@
 
 **这是它最大的优势。** 别的方案给你一个新机器人，这个让你接着自己那条线说。
 
-[English](README.en.md) | 中文
+[English](README.en.md) | 中文　·　[GitHub](https://github.com/KaiyeZeng/dsh-phone-bridge)　·　[Gitee 镜像](https://gitee.com/zeng-kaiye103/dsh-phone-bridge)
 
 ---
 
