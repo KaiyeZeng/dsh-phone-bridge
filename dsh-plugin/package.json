@@ -1,6 +1,6 @@
 {
   "name": "dsh-phone-bridge",
-  "version": "0.2.8",
+  "version": "0.2.9",
   "description": "Drive an existing DSH desktop session from a chat app, plus a sidebar delete button and trash panel",
   "type": "module",
   "main": "index.js",
@@ -23,12 +23,14 @@
   "keywords": [
     "dsh",
     "deepseek-harness",
-    "plugin",
+    "openclaw",
+    "wechat",
+    "weixin",
+    "wechat-bot",
     "session",
     "remote",
-    "delete",
-    "trash",
-    "sidebar"
+    "phone",
+    "bridge"
   ],
   "license": "MIT",
   "dependencies": {},

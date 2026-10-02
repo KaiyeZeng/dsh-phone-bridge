@@ -1,6 +1,6 @@
 # dsh-phone-bridge
 
-**Pick up the DSH session you are already running on your desktop, from your phone.**
+**Pick up the DeepSeek Harness (DSH) session you are already running on your desktop, from WeChat on your phone.**
 
 Most phone setups add a **new entry point** to DSH: the bot creates its own
 session, so what you say on the phone lives in a different conversation from the
