@@ -508,6 +508,75 @@ async function showStatus() {
   return lines.join("\n");
 }
 
+// A link report the phone can actually use, and one that is honest about what it
+// cannot see.
+//
+// This reply is produced by the OpenClaw-side plugin and does not travel through
+// DSH, which is the point: it still arrives when DSH is the broken half. The
+// converse is what makes it useful in the other direction too - if this command
+// gets no answer at all, the problem is above this plugin, in the Gateway, the
+// chat channel, or the computer itself, and no amount of DSH diagnosis will help.
+async function showHealth() {
+  const lines = ["链路自检", ""];
+
+  const health = await httpJson("GET", `${BRIDGE_URL}/health`, undefined, 5000);
+  if (health.ok) {
+    const missing = health.missing ?? [];
+    lines.push(missing.length === 0
+      ? `DSH 侧插件：正常，${(health.required ?? []).length} 个接口方法都在`
+      : `DSH 侧插件：连得上，但缺 ${missing.join(", ")}，用到它们的指令会失败`);
+  } else {
+    lines.push(`DSH 侧插件：不通 —— ${health.error}`);
+  }
+
+  const status = await httpJson("GET", `${BRIDGE_URL}/status`, undefined, 5000);
+  if (status.ok) {
+    lines.push(`DSH 会话：读得到，${status.runningCount ?? 0} 个正在跑任务`);
+  } else {
+    lines.push(`DSH 会话：读不到 —— ${status.error}`);
+  }
+
+  const target = readState().sessionId ?? "";
+  lines.push(`当前指向：${target ? `${shortId(target)}` : "还没指定，发 /list 挑一个"}`);
+
+  lines.push("");
+  lines.push("这条回复是 OpenClaw 侧插件直接发的，不经过 DSH，所以 DSH 卡住时它照样能到。");
+  lines.push("反过来：如果这条都收不到，问题在 Gateway、聊天渠道或电脑本身，不在 DSH。");
+  return lines.join("\n");
+}
+
+// The user's own last few messages, so the phone can tell where a conversation
+// got to without scrolling back through the chat.
+async function showRecent(argument) {
+  const current = readState().sessionId ?? "";
+  if (!current) return "还没指定会话。发 /list 看列表后用 /use <序号>。";
+
+  const asked = Number(String(argument ?? "").trim());
+  const count = Math.min(Math.max(Number.isFinite(asked) && asked > 0 ? Math.floor(asked) : 3, 1), 10);
+
+  const result = await httpJson(
+    "GET",
+    `${BRIDGE_URL}/recent?sessionId=${encodeURIComponent(current)}&limit=${count}`,
+    undefined,
+    8000,
+  );
+  if (!result.ok) return `读取历史失败：${result.error}`;
+
+  const messages = Array.isArray(result.messages) ? result.messages : [];
+  if (!messages.length) return `这个会话里没找到你发过的消息（可能都是别的来源发的）。`;
+
+  const lines = [`最近 ${messages.length} 条你发给这个会话的话：`, ""];
+  messages.forEach((entry, index) => {
+    const text = String(entry?.text ?? "").replace(/\s+/g, " ").trim();
+    const shown = text.length > 160 ? `${text.slice(0, 160)}…` : text;
+    const when = entry?.at ? `（${formatAge(entry.at)}）` : "";
+    lines.push(`${index + 1}. ${shown}${when}`);
+  });
+  lines.push("");
+  lines.push(`要看它回到哪了，发 /status；会话是 ${shortId(current)}。`);
+  return lines.join("\n");
+}
+
 // Stop whatever the current session is running. The bridge cancels with
 // keepInbox, so messages you already sent are not thrown away with the turn.
 //
@@ -721,7 +790,8 @@ async function askSession(sessionId, text) {
 // likely intent when someone mistypes one.
 const KNOWN_COMMANDS = [
   "list", "use", "where", "find", "find-any", "new", "name", "status",
-  "kill", "model", "del", "trash", "restore", "purge", "pending", "help",
+  "health", "recent", "kill", "model", "del", "trash", "restore", "purge",
+  "pending", "help",
 ];
 
 function editDistance(a, b) {
@@ -800,10 +870,14 @@ function helpText() {
     "/where｜当前会话、工作目录、活跃时间",
     "/name <标题>｜给当前会话命名",
     "/status｜当前会话的状态",
+    "/recent [条数]｜看最近几条你发的话，默认 3 条",
     "",
     "运行控制",
     "/kill｜停下当前会话正在跑的任务",
     "/model [序号]｜查看可用模型；带序号就是切换",
+    "",
+    "链路",
+    "/health｜自检链路各层是否接通",
     "",
     "删除与回收站",
     "/del <序号>｜删除，移进回收站可恢复",
@@ -899,6 +973,14 @@ const plugin = {
 
         if (text === "/status") {
           return { handled: true, text: await showStatus() };
+        }
+
+        if (text === "/health") {
+          return { handled: true, text: await showHealth() };
+        }
+
+        if (text === "/recent" || text.startsWith("/recent ")) {
+          return { handled: true, text: await showRecent(text.slice(7)) };
         }
 
         // Deliberately not /stop: OpenClaw claims that one before any plugin
@@ -1060,10 +1142,13 @@ const plugin = {
           }
         }
 
-        // A near-miss command is answered with a suggestion rather than being
-        // forwarded to the session. Typing /lst and watching it arrive at the
-        // agent as prose is confusing, and this channel runs DSH with approvals
-        // off, so stray text is also a stray instruction.
+        // Anything that starts with a slash and is not a command is answered here,
+        // and never forwarded.
+        //
+        // Forwarding it was the old behaviour and it is a bad one: typing
+        // "/删除基金" produced no error, so it went to the agent as a plain request.
+        // The user believes they used a command; the agent receives prose. On a
+        // channel that runs DSH with approvals off, that difference matters.
         if (!body.startsWith("//") && body.startsWith("/")) {
           const word = (body.slice(1).split(/\s+/)[0] ?? "").toLowerCase();
           const guess = closestCommand(word);
@@ -1073,6 +1158,16 @@ const plugin = {
               text: `没有 /${word} 这个指令。\n是想用 /${guess} 吗？\n全部指令发 /help。`,
             };
           }
+          return {
+            handled: true,
+            text: [
+              `没有 /${word} 这个指令，这条我没有发出去。`,
+              "",
+              "指令名只支持英文，中文请对照 /help 里的说明找对应指令，例如删除会话是 /del <序号>。",
+              "",
+              `如果你是想把「${body}」当聊天发给会话，前面再加一个斜杠：/${body}`,
+            ].join("\n"),
+          };
         }
 
         const target = readState().sessionId;

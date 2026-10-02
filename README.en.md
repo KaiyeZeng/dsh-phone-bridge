@@ -86,8 +86,10 @@ the desktop process puts the real `sessionController` within reach.
 - `/new` — create a session
 - `/name <title>` — rename
 - `/status` — state of the current session, its working directory, last activity
+- `/recent [n]` — the last few messages you sent to this session, 3 by default
 - `/kill` — stop the running turn (queued messages are kept)
 - `/model [n]` — list models, or switch to the nth one
+- `/health` — check whether each layer of the link is up
 - `/del <n>` — delete (moves to trash, recoverable)
 - `/trash` — inspect the trash; `/restore <n>` puts one back; `/purge` removes for good
 - `/pending` — show a pending question or approval

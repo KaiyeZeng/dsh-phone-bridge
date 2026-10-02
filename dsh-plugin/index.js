@@ -237,6 +237,7 @@ const REQUIRED_CONTROLLER_METHODS = [
   "inspect",
   "list",
   "modelCatalog",
+  "page",
   "prompt",
   "rename",
   "search",
@@ -271,6 +272,27 @@ function listOnDiskSessionIds() {
     for (const name of entries) ids.add(name);
   }
   return ids;
+}
+
+// Plain text out of a message's content blocks.
+//
+// The block shape is not a stable surface either, so only text-ish fields are
+// read and anything unrecognised is skipped rather than stringified into the
+// output as "[object Object]".
+function textFromContentBlocks(content) {
+  if (typeof content === "string") return content.trim();
+  if (!Array.isArray(content)) return "";
+  const parts = [];
+  for (const block of content) {
+    if (typeof block === "string") {
+      if (block.trim()) parts.push(block.trim());
+      continue;
+    }
+    if (!block || typeof block !== "object") continue;
+    const text = [block.text, block.content].find((v) => typeof v === "string" && v.trim());
+    if (text) parts.push(text.trim());
+  }
+  return parts.join("\n").trim();
 }
 
 // Pull just the title out of a session's projection bag.
@@ -900,6 +922,63 @@ export function apply(ctx, config = {}) {
   // between releases; when it does, the symptom would otherwise be a bare 500 on
   // whichever route happens to touch the missing method, with nothing said about
   // why. Reporting it up front turns that into one clear line.
+  // The user's own last few messages in a session, so the phone can answer "where
+  // did this conversation get to" without scrolling a chat app.
+  //
+  // Read through sessionController.page(), which is the supported history read and
+  // does not activate a cold session. The event shape is not a stable surface, so
+  // every field access is guarded and an unknown payload degrades to fewer lines
+  // rather than throwing.
+  disposers.push(ctx.webServer.register({
+    kind: "exact",
+    path: `${ROUTE_PATH}/recent`,
+    handler: async (req, res) => {
+      try {
+        const url = new URL(req.url ?? "/", "http://127.0.0.1");
+        const sessionId = (url.searchParams.get("sessionId") ?? "").trim();
+        const limit = Math.min(Math.max(Number(url.searchParams.get("limit")) || 3, 1), 20);
+        if (!sessionId) {
+          sendJson(res, 400, { ok: false, error: "sessionId is required" });
+          return;
+        }
+        const sessionController = ctx.get("sessionController");
+        if (!sessionController) throw new Error("sessionController is unavailable");
+        if (typeof sessionController.page !== "function") {
+          throw new Error("this DSH build does not expose sessionController.page");
+        }
+
+        const signal = new AbortController().signal;
+        // throughSeq: -1 means "the newest page"; maxMessages stays well above the
+        // requested count because assistant and tool events sit between the user's.
+        const page = await sessionController.page({
+          address: { kind: "session", sessionId },
+          throughSeq: -1,
+          maxMessages: 200,
+        }, signal);
+
+        const texts = [];
+        for (const record of page?.records ?? []) {
+          const event = record?.event;
+          if (event?.type !== "user/message") continue;
+          if (event?.data?.source?.kind !== "user") continue;
+          const text = textFromContentBlocks(event.data.content);
+          if (!text) continue;
+          texts.push({ at: event.time ?? null, text });
+        }
+
+        sendJson(res, 200, {
+          ok: true,
+          sessionId,
+          total: texts.length,
+          // Newest last, so the caller can slice from the end.
+          messages: texts.slice(-limit),
+        });
+      } catch (error) {
+        sendJson(res, 500, { ok: false, error: String(error?.message ?? error) });
+      }
+    },
+  }));
+
   disposers.push(ctx.webServer.register({
     kind: "exact",
     path: `${ROUTE_PATH}/health`,
