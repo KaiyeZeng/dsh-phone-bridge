@@ -1,17 +1,44 @@
 {
   "name": "dsh-phone-bridge",
   "version": "0.1.0",
-  "description": "DSH plugin: loopback HTTP routes that let an external caller drive an existing desktop session",
+  "description": "Drive an existing DSH desktop session from a chat app, plus a sidebar delete button and trash panel",
   "type": "module",
   "main": "index.js",
-  "license": "MIT",
+  "exports": {
+    ".": {
+      "default": "./index.js"
+    },
+    "./client": {
+      "default": "./client.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "README.md",
+    "README.zh.md",
+    "LICENSE"
+  ],
   "keywords": [
     "dsh",
     "deepseek-harness",
     "plugin",
     "session",
-    "remote"
+    "remote",
+    "delete",
+    "trash",
+    "sidebar"
   ],
+  "license": "MIT",
   "dependencies": {},
-  "comment": "No dependencies on purpose. Only node: builtins are imported, so the file can be mounted straight from disk with file:// without a node_modules directory."
+  "dsh": {
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-workspace"
+      ]
+    }
+  },
+  "comment": "No runtime dependencies on purpose. Only node: builtins are imported in index.js, so the file can be mounted straight from disk with file:// without a node_modules directory. client.js is the built client artifact for the desktop sidebar UI."
 }

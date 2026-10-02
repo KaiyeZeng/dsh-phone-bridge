@@ -138,8 +138,10 @@ releases. When it stops working, check in this order:
 
 ## Maintenance
 
-Provided as is and **not actively maintained**. Issues and pull requests may go
-unanswered.
+Maintained by the author in spare time. Issues and pull requests are welcome and
+will get attention where possible, though response time is not guaranteed.
+Feature requests and compatibility reports (breakage after a DSH or OpenClaw
+upgrade) are both appreciated.
 
 ## License
 

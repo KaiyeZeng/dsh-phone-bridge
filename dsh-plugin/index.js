@@ -236,6 +236,24 @@ function findSessionDir(sessionId) {
   return null;
 }
 
+// Every session id that still has a directory under sessions/. sessionController
+// keeps an in-process cache that is not evicted when a session's directory is
+// moved into the trash, so a freshly deleted session lingers in list() until DSH
+// restarts. The /sessions route filters against this set to hide such phantoms
+// immediately, while still letting running sessions through (they may be created
+// but not yet materialized).
+function listOnDiskSessionIds() {
+  const ids = new Set();
+  if (!existsSync(SESSIONS_ROOT)) return ids;
+  for (const slug of readdirSync(SESSIONS_ROOT)) {
+    const slugDir = join(SESSIONS_ROOT, slug);
+    let entries = [];
+    try { entries = readdirSync(slugDir); } catch { continue; }
+    for (const name of entries) ids.add(name);
+  }
+  return ids;
+}
+
 // Move rather than unlink. DSH exposes no delete API, and an irreversible
 // deletion triggered from a chat message is a bad trade. A session becomes
 // invisible to DSH the instant its directory leaves the sessions root, so
@@ -319,7 +337,15 @@ export function apply(ctx, config = {}) {
         const sessionController = ctx.get("sessionController");
         if (!sessionController) throw new Error("sessionController is unavailable");
         const listing = await sessionController.list({}, new AbortController().signal);
-        const sessions = (listing?.items ?? []).map((item) => ({
+        // Hide sessions whose directory is gone: sessionController.list() keeps a
+        // cached phantom after a delete (its cache is not evicted on directory
+        // removal), and the phone would otherwise still offer a session that no
+        // longer opens. Running sessions are exempt because they may be created
+        // but not yet written to disk.
+        const onDisk = listOnDiskSessionIds();
+        const sessions = (listing?.items ?? [])
+          .filter((item) => item.running || onDisk.has(item.sessionId))
+          .map((item) => ({
           sessionId: item.sessionId,
           updatedAt: item.updatedAt,
           running: Boolean(item.running),
