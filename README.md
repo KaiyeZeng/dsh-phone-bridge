@@ -66,7 +66,9 @@
 
 ## 安装
 
-分两边装。**DSH 侧一行命令**：
+分两边装，**各一行命令**。
+
+**DSH 侧：**
 
 ```
 dsh plugin --profile <你的 profile> add dsh-phone-bridge
@@ -76,9 +78,15 @@ dsh plugin --profile <你的 profile> add dsh-phone-bridge
 
 这个包**自带 bundle 声明**（`dsh.bundle.patch` 指向包内的 `cordis.patch.yml`），所以 `dsh plugin add` 会把 host 半边的条目注册进 profile，client 半边会跟着自动挂上，**不需要手工编辑任何配置文件**。
 
-**OpenClaw 侧**仍需手动放扩展目录（OpenClaw 有它自己的扩展机制），完整步骤见 [docs/installation.md](docs/installation.md)。
+**OpenClaw 侧：**
 
-**本地开发时**也可以不走 npm，直接把 `dsh-plugin/` 用 `file://` 挂进 profile，改完代码不用重装。两种方式选一种，别同时用。
+```
+openclaw plugins install openclaw-dsh-bridge
+```
+
+装完在 `openclaw.json` 里放行并配置（见下一节）。完整步骤见 [docs/installation.md](docs/installation.md)。
+
+**本地开发时**也可以不走 npm：DSH 侧用 `file://` 把 `dsh-plugin/` 挂进 profile，OpenClaw 侧把 `openclaw-plugin/` 复制进扩展目录，改完代码不用重装。两边都别同时用安装版和本地版。
 
 ## 配置
 

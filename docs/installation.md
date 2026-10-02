@@ -70,15 +70,17 @@ dsh plugin --profile desktop list
 
 ## 二、OpenClaw 侧
 
-### 1. 放文件
+### 1. 一行命令装
 
-把 `openclaw-plugin/` 复制到 OpenClaw 的扩展目录：
-
-```
-~/.openclaw/extensions/dsh-bridge/
+```powershell
+openclaw plugins install openclaw-dsh-bridge
 ```
 
-（目录名不一定要叫 `dsh-bridge`，但下面配置里的路径要和它一致。）
+装完它会以 `dsh-bridge` 这个 id 出现。然后再做下面的放行和配置。
+
+### 备选：本地开发用复制
+
+也可以把 `openclaw-plugin/` 直接复制到 `~/.openclaw/extensions/dsh-bridge/`。目录名不一定要叫 `dsh-bridge`，但配置里的名字要和它一致。
 
 ### 2. 放行插件
 

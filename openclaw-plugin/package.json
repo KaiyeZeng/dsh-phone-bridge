@@ -1,8 +1,31 @@
 {
   "name": "openclaw-dsh-bridge",
-  "version": "0.1.0",
-  "description": "Forward private-chat messages to DeepSeek Harness",
+  "version": "0.2.2",
+  "description": "Drive an existing DeepSeek Harness desktop session from WeChat, Telegram or Yuanbao",
   "type": "module",
+  "license": "MIT",
+  "files": [
+    "index.js",
+    "openclaw.plugin.json",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "openclaw",
+    "openclaw-plugin",
+    "deepseek-harness",
+    "dsh",
+    "wechat",
+    "weixin",
+    "remote",
+    "bridge"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/KaiyeZeng/dsh-phone-bridge.git",
+    "directory": "openclaw-plugin"
+  },
+  "homepage": "https://github.com/KaiyeZeng/dsh-phone-bridge",
   "peerDependencies": {
     "openclaw": ">=2026.9.5"
   },

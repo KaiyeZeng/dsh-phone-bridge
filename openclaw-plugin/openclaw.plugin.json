@@ -1,4 +1,4 @@
-﻿{
+{
   "id": "dsh-bridge",
   "name": "DSH Bridge",
   "description": "Drive an existing DeepSeek Harness desktop session from a chat app",
