@@ -1,0 +1,67 @@
+name: 出问题了
+description: 某个功能不工作，或者升级之后坏了
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        先跑一次自检，它能省掉很多来回。在仓库目录里：
+
+        ```powershell
+        powershell -File verify.ps1
+        ```
+
+        把输出整段贴到下面。
+  - type: textarea
+    id: what
+    attributes:
+      label: 发生了什么
+      description: 你发了什么、期望什么、实际得到什么。有原话最好贴原话。
+    validations:
+      required: true
+  - type: textarea
+    id: verify
+    attributes:
+      label: verify.ps1 的输出
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: health
+    attributes:
+      label: /phone-bridge/health 的返回
+      description: '在电脑上运行：curl http://127.0.0.1:19387/phone-bridge/health'
+      render: json
+  - type: input
+    id: dsh-version
+    attributes:
+      label: DSH 版本
+      description: 桌面版关于页里能看到
+      placeholder: 0.2.0-rc.2
+    validations:
+      required: true
+  - type: input
+    id: openclaw-version
+    attributes:
+      label: OpenClaw 版本
+      description: 运行 openclaw --version
+      placeholder: 2026.9.5
+    validations:
+      required: true
+  - type: input
+    id: side-versions
+    attributes:
+      label: 两个包的版本
+      description: 'dsh-phone-bridge 和 openclaw-dsh-bridge 各自装的是哪个版本。注意 dsh plugin add 不会跨小版本升级，见安装文档'
+      placeholder: dsh-phone-bridge 0.2.4 / openclaw-dsh-bridge 0.2.4
+  - type: input
+    id: channel
+    attributes:
+      label: 用的哪个聊天渠道
+      placeholder: 微信 / 元宝 / Telegram
+  - type: textarea
+    id: log
+    attributes:
+      label: hook.log 的最后几十行
+      description: '文件在 %LOCALAPPDATA%\dsh-bridge\hook.log。**贴之前请把里面的身份 ID 删掉**，那是你的账号标识。'
+      render: text

@@ -1,0 +1,54 @@
+name: 兼容性失效
+description: DSH 或 OpenClaw 升级之后，手机桥不工作了
+labels: [bug, compatibility]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        升级导致失效是这个项目最可能的故障类型，两个半边都依赖 DSH 与 OpenClaw 的内部实现。
+
+        **先做这一步**：跑 `verify.ps1`，并且看 `/phone-bridge/health`。健康检查会直接点名哪个 `sessionController` 方法不见了，比逐个路由试要快得多。
+  - type: dropdown
+    id: broke-after
+    attributes:
+      label: 是什么升级之后坏的
+      options:
+        - DSH 升级
+        - OpenClaw 升级
+        - 没升级，突然就不行了
+        - 全新安装就没装上
+    validations:
+      required: true
+  - type: input
+    id: versions-before
+    attributes:
+      label: 升级前的版本
+      placeholder: DSH 0.2.0-rc.1 / OpenClaw 2026.9.4
+  - type: input
+    id: versions-after
+    attributes:
+      label: 升级后的版本
+      placeholder: DSH 0.2.0-rc.2 / OpenClaw 2026.9.5
+    validations:
+      required: true
+  - type: textarea
+    id: health
+    attributes:
+      label: /phone-bridge/health 的返回
+      description: 'curl http://127.0.0.1:19387/phone-bridge/health  如果这个也 404，说明 DSH 侧插件根本没加载'
+      render: json
+    validations:
+      required: true
+  - type: textarea
+    id: symptom
+    attributes:
+      label: 具体哪里不工作了
+      description: 例如：/list 有回复但 /use 报错；手机上完全没反应；桌面侧边栏的删除按钮不见了
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: DSH 启动日志里 phone-bridge 相关的行
+      description: 看有没有 `phone-bridge listening on /phone-bridge`，没有就是插件没挂上。**贴之前把身份 ID 删掉。**
+      render: text

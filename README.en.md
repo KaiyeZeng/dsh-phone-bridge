@@ -106,6 +106,9 @@ the desktop process puts the real `sessionController` within reach.
   of being forwarded to DSH as prose
 - When the allowlist turns you away it **replies with your own identity ids**, so you
   can paste one into `allowedSenders` without going to read the log on the computer
+- **If the previous task is still running, your next message is answered at once**
+  with how long it has been running, instead of being queued into a silence that
+  looks like a dead link. That message is not forwarded.
 
 ## Install
 
@@ -195,6 +198,10 @@ Please:
   command that ignores interrupts, a one-shot `sleep` for instance, has to finish
   on its own first. The acknowledgement comes back immediately; receiving it does
   not mean the work has stopped.
+- **Messages sent while a task is running are not forwarded.** They are intercepted
+  and answered with a notice instead of being queued, so you are never left staring
+  at a silent window. The cost is that you have to send it again. To queue instead,
+  stop the current task with `/kill` first.
 - **`/stop` does not work, and neither do the obvious alternatives.** OpenClaw
   claims `/stop`, `/halt`, `/abort`, `/interrupt`, `/exit`, `/停止` and `/暂停`
   before any plugin hook runs, and its handler aborts OpenClaw's own reply rather

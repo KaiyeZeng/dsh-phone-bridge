@@ -41,6 +41,11 @@ let ANSWER_URL = process.env.DSH_NOTIFY_URL || "http://127.0.0.1:19387/dsh-notif
 let PAGE_SIZE = 15;
 let TURN_TIMEOUT_MS = 300000;
 
+// The forward that is still waiting for its answer, if any. Kept in memory on
+// purpose: the point is to tell a second message that the session is busy
+// without asking DSH, because asking DSH is the thing that stalls while it is.
+let forwarding = null;
+
 const stateDir = join(process.env.LOCALAPPDATA ?? ".", "dsh-bridge");
 const logFile = join(stateDir, "hook.log");
 const targetFile = join(stateDir, "target-session.json");
@@ -1048,8 +1053,36 @@ const plugin = {
           };
         }
 
+        // A second message sent while the first is still being answered used to
+        // be forwarded too, and then sat in the queue while the desktop worked
+        // through the first turn. From the phone that is indistinguishable from a
+        // dead link: you send something and nothing comes back. Say so instead.
+        //
+        // The check is on our own bookkeeping, not on an HTTP call, so the notice
+        // is immediate even though the session is busy - which is exactly the
+        // situation where a round trip to DSH would stall.
+        if (forwarding && forwarding.sessionId === target) {
+          const seconds = Math.max(1, Math.round((Date.now() - forwarding.startedAt) / 1000));
+          note(`busy notice ${shortId(target)} after ${seconds}s`);
+          return {
+            handled: true,
+            text: [
+              `上一个任务还在跑（已经 ${seconds} 秒），这条我没有发出去。`,
+              "",
+              "等它跑完再发；要中断它，发 /kill。",
+              "想看它在做什么，发 /status。",
+            ].join("\n"),
+          };
+        }
+
         note(`ask ${shortId(target)} chars=${body.length}`);
-        const reply = await askSession(target, body);
+        forwarding = { sessionId: target, startedAt: Date.now() };
+        let reply;
+        try {
+          reply = await askSession(target, body);
+        } finally {
+          forwarding = null;
+        }
         note(`done elapsedMs=${Date.now() - startedAt} replyChars=${reply.length}`);
         return { handled: true, text: reply };
       } catch (error) {
