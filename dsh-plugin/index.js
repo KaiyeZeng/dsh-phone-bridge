@@ -221,6 +221,9 @@ function createHandler(ctx) {
 const DSH_HOME = join(homedir(), ".dsh");
 const SESSIONS_ROOT = join(DSH_HOME, "sessions");
 const PROJCACHE_ROOT = join(DSH_HOME, "storages", "session_projcache", "sessions");
+// The desktop sidebar renders this registry, so the /sessions route reads it too
+// in order to list the same rows the desktop does.
+const WORKSPACE_FILE = join(DSH_HOME, "storages", "workspace.json");
 // TRASH_ROOT is assigned in apply() from Config, because it is the one path a
 // deployment may reasonably want to move somewhere else.
 
@@ -252,6 +255,31 @@ function listOnDiskSessionIds() {
     for (const name of entries) ids.add(name);
   }
   return ids;
+}
+
+// The ids the desktop sidebar would actually list.
+//
+// The sidebar renders DSH's workspace registry (workspaces[<id>].sessionIds),
+// not the disk. Sessions that were never registered there - subagent sessions,
+// ones made before the registry existed - have files but no row. Listing the
+// disk alone therefore shows the phone rows the desktop does not have, which
+// reads as "the phone still shows sessions I deleted".
+//
+// Returns null when the registry cannot be read, so the caller can fall back to
+// the disk list instead of hiding everything.
+function readRegisteredSessionIds() {
+  try {
+    const parsed = JSON.parse(readFileSync(WORKSPACE_FILE, "utf8"));
+    const ids = new Set();
+    for (const workspace of Object.values(parsed?.tables?.workspaces ?? {})) {
+      for (const id of workspace?.sessionIds ?? []) ids.add(id);
+    }
+    // Archived sessions live in their own sidebar section, not the main list.
+    for (const id of parsed?.global?.archivedSessionIds ?? []) ids.delete(id);
+    return ids;
+  } catch {
+    return null;
+  }
 }
 
 // Move rather than unlink. DSH exposes no delete API, and an irreversible
@@ -337,14 +365,25 @@ export function apply(ctx, config = {}) {
         const sessionController = ctx.get("sessionController");
         if (!sessionController) throw new Error("sessionController is unavailable");
         const listing = await sessionController.list({}, new AbortController().signal);
-        // Hide sessions whose directory is gone: sessionController.list() keeps a
-        // cached phantom after a delete (its cache is not evicted on directory
-        // removal), and the phone would otherwise still offer a session that no
-        // longer opens. Running sessions are exempt because they may be created
-        // but not yet written to disk.
+        // Two filters, both about agreeing with the desktop sidebar:
+        //  - the registry filter drops sessions the sidebar would not list at all
+        //    (never registered in a workspace: subagent sessions, pre-registry
+        //    ones). Without it the phone shows rows the desktop does not have,
+        //    which reads as "the phone still has the sessions I deleted".
+        //  - the disk filter drops cached phantoms: sessionController.list()
+        //    keeps returning a session after its directory is moved to the trash,
+        //    because that cache is only rebuilt on restart.
+        // Running sessions bypass both: they can exist before being materialized
+        // or registered.
         const onDisk = listOnDiskSessionIds();
+        const registered = readRegisteredSessionIds();
         const sessions = (listing?.items ?? [])
-          .filter((item) => item.running || onDisk.has(item.sessionId))
+          .filter((item) => {
+            if (item.running) return true;
+            if (!onDisk.has(item.sessionId)) return false;
+            if (registered !== null && !registered.has(item.sessionId)) return false;
+            return true;
+          })
           .map((item) => ({
           sessionId: item.sessionId,
           updatedAt: item.updatedAt,
