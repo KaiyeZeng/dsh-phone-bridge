@@ -390,7 +390,7 @@ async function showTrash() {
     ...lines,
     ...more,
     "",
-    "/purge <序号> 只删那一个；/purge 会清空全部（都不可恢复）。",
+    "/restore <序号> 放回原位置；/purge <序号> 只删那一个；/purge 清空全部（后两个不可恢复）。",
   ].join("\n");
 }
 
@@ -444,6 +444,28 @@ function cancelPurge() {
   state.pendingPurge = "";
   writeState(state);
   return had ? "已取消。" : "没有待确认的清理。";
+}
+
+// Put one trashed session back. Single step on purpose: unlike purge this
+// destroys nothing, and the worst a wrong index costs is another /del.
+async function restoreFromTrash(reference) {
+  const wanted = String(reference ?? "").trim();
+  if (!wanted) return "用法：/restore <序号>（序号看 /trash）。";
+
+  const listing = await httpJson("GET", `${BRIDGE_URL}/trash`);
+  if (!listing.ok) return `读取回收站失败：${listing.error}`;
+
+  const entry = (listing.entries ?? [])[Number(wanted) - 1];
+  if (!entry) return `没有第 ${wanted} 项。先发 /trash 看列表。`;
+  if (!entry.restorable) {
+    return `第 ${wanted} 项没有原位置记录，系统不知道该放回哪里，无法自动恢复。`;
+  }
+
+  const result = await httpJson("POST", `${BRIDGE_URL}/restore`, { name: entry.name });
+  if (!result.ok) return `恢复失败：${result.error}`;
+
+  note(`restored ${result.sessionId ?? entry.name}`);
+  return `已恢复：${result.sessionId ?? entry.name}\n它回到了原来的工作目录，桌面侧边栏里应该就能看到了。`;
 }
 
 function resolveTarget(reference) {
@@ -506,9 +528,10 @@ function helpText() {
     "  /where              查看当前会话、工作目录与活跃时间",
     "  /name <标题>        给当前会话命名（电脑端同步显示）",
     "",
-    "删除（都会先让你确认）",
+    "删除与回收站",
     "  /del <序号>         删除会话，移进回收站可恢复",
     "  /trash              查看回收站内容与占用",
+    "  /restore <序号>     把回收站里的一项放回原位置",
     "  /purge [序号]       彻底抹除，不带序号是全部",
     "  确认用 /del! 或 /purge!，取消用 /del-out 或 /purge-out",
     "",
@@ -572,6 +595,10 @@ const plugin = {
 
         if (text === "/trash") {
           return { handled: true, text: await showTrash() };
+        }
+
+        if (text === "/restore" || text.startsWith("/restore ")) {
+          return { handled: true, text: await restoreFromTrash(text.slice(8)) };
         }
 
         if (text === "/purge!") {
