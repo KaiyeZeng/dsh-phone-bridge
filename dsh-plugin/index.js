@@ -957,22 +957,45 @@ export function apply(ctx, config = {}) {
         }, signal);
 
         const texts = [];
-        for (const record of page?.records ?? []) {
+        const allRecords = page?.records ?? [];
+        const typeTally = {};
+        let firstUserEvent = null;
+        for (const record of allRecords) {
           const event = record?.event;
-          if (event?.type !== "user/message") continue;
+          if (!event) continue;
+          const key = event.type ?? "(none)";
+          typeTally[key] = (typeTally[key] ?? 0) + 1;
+          if (event.type !== "user/message") continue;
+          if (!firstUserEvent) firstUserEvent = event;
           if (event?.data?.source?.kind !== "user") continue;
           const text = textFromContentBlocks(event.data.content);
           if (!text) continue;
           texts.push({ at: event.time ?? null, text });
         }
 
-        sendJson(res, 200, {
+        const payload = {
           ok: true,
           sessionId,
           total: texts.length,
           // Newest last, so the caller can slice from the end.
           messages: texts.slice(-limit),
-        });
+        };
+
+        // Opt-in shape report. The history event format is not a documented
+        // surface, so when a read comes back empty the only quick way to find out
+        // why is to look at what actually arrived. Loopback-only, and truncated.
+        if ((url.searchParams.get("debug") ?? "") === "1") {
+          payload.diagnostics = {
+            recordCount: allRecords.length,
+            hasMore: page?.hasMore ?? null,
+            recordKeys: allRecords[0] ? Object.keys(allRecords[0]) : [],
+            eventTypes: typeTally,
+            firstRecordSample: allRecords[0] ? JSON.stringify(allRecords[0]).slice(0, 700) : null,
+            firstUserEventSample: firstUserEvent ? JSON.stringify(firstUserEvent).slice(0, 1400) : null,
+          };
+        }
+
+        sendJson(res, 200, payload);
       } catch (error) {
         sendJson(res, 500, { ok: false, error: String(error?.message ?? error) });
       }
